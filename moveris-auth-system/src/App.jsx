@@ -57,6 +57,7 @@ const MoverisAuthApp = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('Idle');
   const [connectionTime, setConnectionTime] = useState('00:00');
+  const [livelinessResults, setLivelinessResults] = useState(null);
   
   // ============================================================================
   // REFS
@@ -68,6 +69,8 @@ const MoverisAuthApp = () => {
   const intervalRef = useRef(null);
   const connectionStartTimeRef = useRef(null);
   const timerIntervalRef = useRef(null);
+  const frameCountRef = useRef(0);
+  const frameCountAckRef = useRef(0);
 
   // ============================================================================
   // EMAIL/PASSWORD LOGIN HANDLERS
@@ -244,7 +247,8 @@ const MoverisAuthApp = () => {
       
       case 'frame_received':
         setFramesAcked(prev => prev + 1);
-        console.log(`Frame ${data.frame_number} received. Total: ${data.total_frames}`);
+        frameCountAckRef.current += 1;
+        // console.log(`Frame ${data.frame_number} received. Total: ${data.total_frames}`);
         break;
       
       case 'processing_started':
@@ -257,24 +261,25 @@ const MoverisAuthApp = () => {
         console.log('Processing complete:', data.result);
         setDetectionResult(data.result);
         setProcessingStatus('Complete');
-        
+        frameCountAckRef.current = 0;
+        // frameCountRef.current = 0; // Reset frame count ref
         // Check if live person detected
-        if (data.result && data.result.prediction === 'live') {
-          setLivelinessStatus('✓ Live person detected!');
-          setTimeout(() => {
-            setAuthStage('success');
-            cleanupWebcam();
-            if (wsRef.current) {
-              wsRef.current.close();
-            }
-          }, 1500);
+        if (data.result) {
+          setLivelinessResults(data.result);
+          // setTimeout(() => {
+          //   setAuthStage('success');
+          //   cleanupWebcam();
+          //   if (wsRef.current) {
+          //     wsRef.current.close();
+          //   }
+          // }, 1500);
         } else {
           setError('Liveliness check failed. No live person detected.');
-          setAuthStage('error');
-          cleanupWebcam();
-          if (wsRef.current) {
-            wsRef.current.close();
-          }
+          // setAuthStage('error');
+          // cleanupWebcam();
+          // if (wsRef.current) {
+          //   wsRef.current.close();
+          // }
         }
         break;
       
@@ -289,7 +294,7 @@ const MoverisAuthApp = () => {
         break;
 
       default:
-        console.log('Unknown message type:', data.type);
+        console.log('Unknown message type:', data);
         break;
     }
   };
@@ -312,6 +317,7 @@ const MoverisAuthApp = () => {
    * Sends frames to Moveris API at configured frame rate
    */
   const startFrameCapture = () => {
+    // console.log("=========== start capture");
     if (!canvasRef.current) {
       canvasRef.current = document.createElement('canvas');
     }
@@ -328,14 +334,15 @@ const MoverisAuthApp = () => {
    * Captures and sends a single frame to Moveris
    */
   const captureAndSendFrame = () => {
-    if (!wsRef.current || !isAuthenticated) {
-      return;
-    }
 
     try {
       const frameData = captureFrame();
+      // console.log("====== Capturing frames");
       if (frameData && wsRef.current.readyState === WebSocket.OPEN) {
-        const currentFrame = frameCount + 1;
+        // console.log("====== Capturing frames started");
+        // const currentFrame = frameCount + 1;
+        frameCountRef.current += 1;
+        const currentFrame = frameCountRef.current;
         
         wsRef.current.send(JSON.stringify({
           type: 'frame',
@@ -344,12 +351,12 @@ const MoverisAuthApp = () => {
           timestamp: Date.now() / 1000
         }));
         
-        setFrameCount(currentFrame);
+        setFrameCount( prev => prev + 1);
         
         // Update status based on progress
-        const progress = Math.round((currentFrame / CONFIG.REQUIRED_FRAMES) * 100);
+        const progress = Math.round((frameCountAckRef.current / CONFIG.REQUIRED_FRAMES) * 100);
         setLivelinessStatus(
-          `Analyzing... Frame ${currentFrame}/${CONFIG.REQUIRED_FRAMES} (${progress}%)`
+          `Analyzing... Frame ${frameCountAckRef.current}/${CONFIG.REQUIRED_FRAMES} (${progress}%)`
         );
       }
     } catch (error) {
@@ -557,6 +564,24 @@ const MoverisAuthApp = () => {
                 </div>
               </div>
             </div>
+
+            {livelinessResults && (
+              <div className="mt-2 p-2 bg-gray-50 rounded-2xl shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Liveliness Analysis</h3>
+                <p className="text-gray-700">
+                  <span className="font-medium text-gray-900">Result:</span>{livelinessResults.result} {' - '}
+                  {livelinessResults.prediction === 'Real'
+                    ? <span className="text-green-600 font-semibold">Real</span>
+                    : <span className="text-red-600 font-semibold">Not Real</span>}
+                </p>
+                <p className="text-gray-700 mt-1">
+                  <span className="font-medium text-gray-900">AI Confidence:</span>{livelinessResults.result} {' - '}
+                  <span className="text-blue-600 font-semibold">
+                    {(livelinessResults.ai_probability * 100).toFixed(2)}%
+                  </span>
+                </p>
+              </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-2 gap-3">
