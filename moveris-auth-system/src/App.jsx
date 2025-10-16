@@ -27,7 +27,7 @@ import { Camera, CheckCircle, XCircle, Loader2, User, Shield, Eye, EyeOff } from
 // ============================================================================
 const CONFIG = {
   // Moveris API Configuration
-  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://dev.api.moveris.com/ws/live/v1/",
+  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://developers.moveris.com/ws/live/v1/",
   MOVERIS_SECRET_KEY: import.meta.env.VITE_MOVERIS_SECRET_KEY || "",
   
   // Frame Capture Settings

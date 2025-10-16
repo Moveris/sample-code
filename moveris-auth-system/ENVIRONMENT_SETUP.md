@@ -18,7 +18,7 @@ Open `.env` and update with your actual values:
 
 ```env
 # Moveris API Configuration
-VITE_MOVERIS_WS_URI=wss://dev.api.moveris.com/ws/live/v1/
+VITE_MOVERIS_WS_URI=wss://developers.moveris.com/ws/live/v1/
 VITE_MOVERIS_SECRET_KEY=your_actual_secret_key_here
 
 # Frame Capture Settings
@@ -44,8 +44,8 @@ npm run dev
 ### VITE_MOVERIS_WS_URI
 - **Description**: Moveris WebSocket API endpoint
 - **Required**: Yes
-- **Default**: `wss://dev.api.moveris.com/ws/live/v1/`
-- **Example**: `wss://dev.api.moveris.com/ws/live/v1/`
+- **Default**: `wss://developers.moveris.com/ws/live/v1/`
+- **Example**: `wss://developers.moveris.com/ws/live/v1/`
 - **Notes**: Use the WebSocket URL provided by Moveris
 
 ### VITE_MOVERIS_SECRET_KEY
