@@ -72,6 +72,8 @@ const MoverisAuthApp = () => {
   const frameCountRef = useRef(0);
   const frameCountAckRef = useRef(0);
 
+  const authStageRef = useRef(authStage);
+
   // ============================================================================
   // EMAIL/PASSWORD LOGIN HANDLERS
   // ============================================================================
@@ -80,6 +82,12 @@ const MoverisAuthApp = () => {
    * Handles email/password login
    * Validates credentials against hardcoded values
    */
+
+  useEffect(() => {
+    authStageRef.current = authStage;
+  }, [authStage]);
+
+
   const handleLogin = (e) => {
     e.preventDefault();
     
@@ -217,8 +225,8 @@ const MoverisAuthApp = () => {
     };
 
     ws.onclose = (event) => {
-      console.log('WebSocket closed:', event.code, event.reason);
-      if (authStage === 'liveliness' && authStage !== 'success') {
+      console.log('WebSocket closed:', event.code, event.reason, authStage);
+      if (authStageRef.current === 'liveliness') {
         setError('Connection closed unexpectedly.');
         setAuthStage('error');
       }
@@ -258,28 +266,30 @@ const MoverisAuthApp = () => {
         break;
       
       case 'processing_complete':
-        console.log('Processing complete:', data.result);
+        console.log('Processing complete:', data.result, data.result.prediction);
         setDetectionResult(data.result);
         setProcessingStatus('Complete');
         frameCountAckRef.current = 0;
         // frameCountRef.current = 0; // Reset frame count ref
         // Check if live person detected
-        if (data.result) {
+        if (data.result && data.result.prediction === 'Real') {
+          console.log('Liveliness check passed');
           setLivelinessResults(data.result);
-          // setTimeout(() => {
-          //   setAuthStage('success');
-          //   cleanupWebcam();
-          //   if (wsRef.current) {
-          //     wsRef.current.close();
-          //   }
-          // }, 1500);
+          setAuthStage('success');
+          setTimeout(() => {
+            cleanupWebcam();
+            if (wsRef.current) {
+              wsRef.current.close();
+            }
+          }, 1500);
         } else {
+          console.log('Liveliness check failed');
           setError('Liveliness check failed. No live person detected.');
-          // setAuthStage('error');
-          // cleanupWebcam();
-          // if (wsRef.current) {
-          //   wsRef.current.close();
-          // }
+          setAuthStage('error');
+          cleanupWebcam();
+          if (wsRef.current) {
+            wsRef.current.close();
+          }
         }
         break;
       
@@ -416,6 +426,9 @@ const MoverisAuthApp = () => {
     setProcessingStatus('Idle');
     setConnectionTime('00:00');
     cleanupWebcam();
+    setLivelinessResults(null);
+    frameCountRef.current = 0;
+    frameCountAckRef.current = 0;
     if (wsRef.current) {
       wsRef.current.close();
     }
@@ -666,7 +679,7 @@ const MoverisAuthApp = () => {
             
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Authentication Failed
+                Liveliness Check Failed
               </h2>
               <p className="text-gray-600 mb-4">
                 {error}
