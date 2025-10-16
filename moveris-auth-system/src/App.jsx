@@ -1,29 +1,43 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, CheckCircle, XCircle, Loader2, User, Shield } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, Loader2, User, Shield, Eye, EyeOff } from 'lucide-react';
 
 /**
  * Moveris Liveliness Authentication System
  * 
  * This component demonstrates a secure authentication flow:
- * 1. User logs in with Google OAuth
- * 2. System performs liveliness detection via webcam
- * 3. User gains access after successful verification
+ * 1. User logs in with email and password
+ * 2. System performs liveliness detection via webcam using Moveris Live API
+ * 3. User gains access after successful verification (500 frames processed)
  * 
- * Configuration required:
- * - GOOGLE_CLIENT_ID: Your Google OAuth client ID
- * - MOVERIS_WS_URI: Moveris WebSocket endpoint
- * - MOVERIS_AUTH_TOKEN: Your Moveris API authentication token
+ * Configuration:
+ * All settings are loaded from environment variables (.env file)
+ * See .env.example for all available options
+ * 
+ * Quick Setup:
+ * 1. Copy .env.example to .env
+ * 2. Update VITE_MOVERIS_SECRET_KEY with your actual key
+ * 3. Optionally adjust VITE_ADMIN_EMAIL and VITE_ADMIN_PASSWORD
+ * 4. Run: npm run dev
+ * 
+ * See ENVIRONMENT_SETUP.md for detailed configuration guide
  */
 
 // ============================================================================
-// CONFIGURATION - Update these with your actual credentials
+// CONFIGURATION - Loaded from environment variables
 // ============================================================================
 const CONFIG = {
-  GOOGLE_CLIENT_ID: "YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com",
-  MOVERIS_WS_URI: "wss://developers.moveris.com/ws/live/v1/",
-  MOVERIS_AUTH_TOKEN: "Bearer YOUR_MOVERIS_TOKEN_HERE",
-  FRAME_CAPTURE_INTERVAL: 500, // milliseconds between frame captures
-  LIVELINESS_DURATION: 5000, // total duration for liveliness check
+  // Moveris API Configuration
+  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://dev.api.moveris.com/ws/live/v1/",
+  MOVERIS_SECRET_KEY: import.meta.env.VITE_MOVERIS_SECRET_KEY || "",
+  
+  // Frame Capture Settings
+  FRAME_RATE: parseInt(import.meta.env.VITE_FRAME_RATE) || 10,
+  IMAGE_QUALITY: parseFloat(import.meta.env.VITE_IMAGE_QUALITY) || 0.7,
+  REQUIRED_FRAMES: parseInt(import.meta.env.VITE_REQUIRED_FRAMES) || 500,
+  
+  // Authentication Credentials (for demo only - use backend auth in production)
+  ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL || "admin@example.com",
+  ADMIN_PASSWORD: import.meta.env.VITE_ADMIN_PASSWORD || "Admin@123",
 };
 
 const MoverisAuthApp = () => {
@@ -31,12 +45,18 @@ const MoverisAuthApp = () => {
   // STATE MANAGEMENT
   // ============================================================================
   const [authStage, setAuthStage] = useState('login'); // login, liveliness, success, error
-  const [googleUser, setGoogleUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [user, setUser] = useState(null);
   const [livelinessStatus, setLivelinessStatus] = useState('');
   const [error, setError] = useState('');
   const [frameCount, setFrameCount] = useState(0);
+  const [framesAcked, setFramesAcked] = useState(0);
   const [detectionResult, setDetectionResult] = useState(null);
-  const [googleLoaded, setGoogleLoaded] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('Idle');
+  const [connectionTime, setConnectionTime] = useState('00:00');
   
   // ============================================================================
   // REFS
@@ -46,79 +66,37 @@ const MoverisAuthApp = () => {
   const wsRef = useRef(null);
   const streamRef = useRef(null);
   const intervalRef = useRef(null);
-  const googleButtonRef = useRef(null);
+  const connectionStartTimeRef = useRef(null);
+  const timerIntervalRef = useRef(null);
 
   // ============================================================================
-  // GOOGLE OAUTH SETUP
+  // EMAIL/PASSWORD LOGIN HANDLERS
   // ============================================================================
   
   /**
-   * Loads Google Identity Services library
-   * Initializes Google Sign-In button
+   * Handles email/password login
+   * Validates credentials against hardcoded values
    */
-  useEffect(() => {
-    // Load Google Identity Services script
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = initializeGoogleSignIn;
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup script on unmount
-      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (existingScript) {
-        document.head.removeChild(existingScript);
-      }
-    };
-  }, []);
-
-  /**
-   * Initializes Google Sign-In after library loads
-   */
-  const initializeGoogleSignIn = () => {
-    if (window.google && googleButtonRef.current) {
-      window.google.accounts.id.initialize({
-        client_id: CONFIG.GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-      });
-
-      window.google.accounts.id.renderButton(
-        googleButtonRef.current,
-        {
-          theme: 'filled_blue',
-          size: 'large',
-          text: 'continue_with',
-          width: 280,
-        }
-      );
-
-      setGoogleLoaded(true);
+  const handleLogin = (e) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
     }
-  };
-
-  /**
-   * Handles Google OAuth callback
-   * Decodes JWT token and extracts user information
-   */
-  const handleGoogleCallback = (response) => {
-    try {
-      // Decode JWT token to get user info
-      const token = response.credential;
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      
-      setGoogleUser({
-        name: payload.name,
-        email: payload.email,
-        picture: payload.picture,
+    
+    // Simple validation (replace with backend authentication in production)
+    if (email === CONFIG.ADMIN_EMAIL && password === CONFIG.ADMIN_PASSWORD) {
+      setUser({
+        email: email,
+        name: email.split('@')[0],
       });
       
       setAuthStage('liveliness');
       setLivelinessStatus('Initializing webcam...');
-    } catch (err) {
-      setError('Failed to process Google login');
-      console.error('Google auth error:', err);
+      setError('');
+    } else {
+      setError('Invalid email or password');
     }
   };
 
@@ -136,7 +114,7 @@ const MoverisAuthApp = () => {
         video: { 
           width: { ideal: 640 },
           height: { ideal: 480 },
-          facingMode: 'user'
+          frameRate: { ideal: CONFIG.FRAME_RATE }
         },
         audio: false
       });
@@ -167,14 +145,14 @@ const MoverisAuthApp = () => {
     const context = canvas.getContext('2d');
     
     // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
     
     // Draw current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // Convert to base64 JPEG
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const dataUrl = canvas.toDataURL('image/jpeg', CONFIG.IMAGE_QUALITY);
     const base64Data = dataUrl.split(',')[1];
     
     return base64Data;
@@ -192,10 +170,14 @@ const MoverisAuthApp = () => {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
   };
 
   // ============================================================================
-  // MOVERIS WEBSOCKET INTEGRATION
+  // MOVERIS WEBSOCKET INTEGRATION (Based on provided HTML logic)
   // ============================================================================
   
   /**
@@ -205,66 +187,20 @@ const MoverisAuthApp = () => {
   const initializeWebSocket = () => {
     const ws = new WebSocket(CONFIG.MOVERIS_WS_URI);
     wsRef.current = ws;
-    let authSuccess = false;
-    let frameCounter = 0;
+    connectionStartTimeRef.current = Date.now();
 
     ws.onopen = () => {
-      console.log('Connected to Moveris WebSocket');
-      setLivelinessStatus('Connected. Waiting for authentication...');
+      console.log('WebSocket connected');
+      setLivelinessStatus('Connected, authenticating...');
+      
+      // Start connection timer
+      timerIntervalRef.current = setInterval(updateConnectionTimer, 1000);
     };
 
     ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
-        console.log('Moveris response:', message);
-
-        // Handle initial connection message
-        if (!authSuccess && message.type !== 'auth_success') {
-          // Send authentication
-          const authPayload = {
-            type: 'auth',
-            token: CONFIG.MOVERIS_AUTH_TOKEN,
-          };
-          ws.send(JSON.stringify(authPayload));
-          console.log('Sent authentication payload');
-          return;
-        }
-
-        // Handle authentication success
-        if (message.type === 'auth_success' || message.status === 'ok') {
-          authSuccess = true;
-          setLivelinessStatus('Authenticated. Starting liveliness detection...');
-          startFrameCapture(ws);
-          return;
-        }
-
-        // Handle liveliness detection results
-        if (message.type === 'detection_result' || message.live !== undefined) {
-          setDetectionResult(message);
-          
-          if (message.live === true || message.status === 'live') {
-            setLivelinessStatus('✓ Live person detected!');
-            setTimeout(() => {
-              setAuthStage('success');
-              cleanupWebcam();
-              ws.close();
-            }, 1000);
-          } else if (message.live === false) {
-            setError('Liveliness check failed. Please try again.');
-            setAuthStage('error');
-            cleanupWebcam();
-            ws.close();
-          }
-        }
-
-        // Handle errors from server
-        if (message.type === 'error' || message.error) {
-          setError(message.message || 'Liveliness detection error');
-          setAuthStage('error');
-          cleanupWebcam();
-          ws.close();
-        }
-
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
       } catch (err) {
         console.error('Error parsing message:', err);
       }
@@ -288,36 +224,151 @@ const MoverisAuthApp = () => {
   };
 
   /**
-   * Starts periodic frame capture and transmission
-   * Sends frames to Moveris API for liveliness detection
+   * Handles WebSocket messages from Moveris API
+   * Implements the message protocol from the provided HTML
    */
-  const startFrameCapture = (ws) => {
-    let frameNumber = 0;
-    const startTime = Date.now();
-
-    intervalRef.current = setInterval(() => {
-      // Check if duration exceeded
-      if (Date.now() - startTime > CONFIG.LIVELINESS_DURATION) {
-        clearInterval(intervalRef.current);
-        setLivelinessStatus('Processing results...');
-        return;
-      }
-
-      // Capture and send frame
-      const frameData = captureFrame();
-      if (frameData && ws.readyState === WebSocket.OPEN) {
-        frameNumber++;
-        const framePayload = {
-          type: 'frame',
-          frame_data: frameData,
-          frame_number: frameNumber,
-        };
+  const handleWebSocketMessage = (data) => {
+    switch(data.type) {
+      case 'auth_required':
+        console.log('Authentication required');
+        authenticateWithMoveris();
+        break;
+      
+      case 'auth_success':
+        console.log('Authenticated successfully');
+        setIsAuthenticated(true);
+        setLivelinessStatus('Authenticated - Starting camera stream...');
+        // Start frame capture after authentication
+        setTimeout(() => startFrameCapture(), 500);
+        break;
+      
+      case 'frame_received':
+        setFramesAcked(prev => prev + 1);
+        console.log(`Frame ${data.frame_number} received. Total: ${data.total_frames}`);
+        break;
+      
+      case 'processing_started':
+        console.log('Processing started');
+        setProcessingStatus('Processing');
+        setLivelinessStatus('Processing frames...');
+        break;
+      
+      case 'processing_complete':
+        console.log('Processing complete:', data.result);
+        setDetectionResult(data.result);
+        setProcessingStatus('Complete');
         
-        ws.send(JSON.stringify(framePayload));
-        setFrameCount(frameNumber);
-        setLivelinessStatus(`Analyzing... (frame ${frameNumber})`);
+        // Check if live person detected
+        if (data.result && data.result.prediction === 'live') {
+          setLivelinessStatus('✓ Live person detected!');
+          setTimeout(() => {
+            setAuthStage('success');
+            cleanupWebcam();
+            if (wsRef.current) {
+              wsRef.current.close();
+            }
+          }, 1500);
+        } else {
+          setError('Liveliness check failed. No live person detected.');
+          setAuthStage('error');
+          cleanupWebcam();
+          if (wsRef.current) {
+            wsRef.current.close();
+          }
+        }
+        break;
+      
+      case 'error':
+        console.error('Server error:', data.message);
+        setError(data.message || 'Liveliness detection error');
+        setAuthStage('error');
+        cleanupWebcam();
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
+        break;
+
+      default:
+        console.log('Unknown message type:', data.type);
+        break;
+    }
+  };
+
+  /**
+   * Sends authentication to Moveris API
+   */
+  const authenticateWithMoveris = () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'auth',
+        token: CONFIG.MOVERIS_SECRET_KEY
+      }));
+      setLivelinessStatus('Authenticating with Moveris...');
+    }
+  };
+
+  /**
+   * Starts periodic frame capture and transmission
+   * Sends frames to Moveris API at configured frame rate
+   */
+  const startFrameCapture = () => {
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement('canvas');
+    }
+
+    const frameRate = CONFIG.FRAME_RATE;
+    intervalRef.current = setInterval(() => {
+      captureAndSendFrame();
+    }, 1000 / frameRate);
+
+    setLivelinessStatus(`Streaming at ${frameRate} FPS - ${CONFIG.REQUIRED_FRAMES} frames needed`);
+  };
+
+  /**
+   * Captures and sends a single frame to Moveris
+   */
+  const captureAndSendFrame = () => {
+    if (!wsRef.current || !isAuthenticated) {
+      return;
+    }
+
+    try {
+      const frameData = captureFrame();
+      if (frameData && wsRef.current.readyState === WebSocket.OPEN) {
+        const currentFrame = frameCount + 1;
+        
+        wsRef.current.send(JSON.stringify({
+          type: 'frame',
+          frame_number: currentFrame,
+          frame_data: frameData,
+          timestamp: Date.now() / 1000
+        }));
+        
+        setFrameCount(currentFrame);
+        
+        // Update status based on progress
+        const progress = Math.round((currentFrame / CONFIG.REQUIRED_FRAMES) * 100);
+        setLivelinessStatus(
+          `Analyzing... Frame ${currentFrame}/${CONFIG.REQUIRED_FRAMES} (${progress}%)`
+        );
       }
-    }, CONFIG.FRAME_CAPTURE_INTERVAL);
+    } catch (error) {
+      console.error('Error capturing frame:', error);
+    }
+  };
+
+  /**
+   * Updates connection timer display
+   */
+  const updateConnectionTimer = () => {
+    if (connectionStartTimeRef.current) {
+      const elapsed = Math.floor((Date.now() - connectionStartTimeRef.current) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      setConnectionTime(
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    }
   };
 
   // ============================================================================
@@ -346,11 +397,17 @@ const MoverisAuthApp = () => {
   
   const resetAuth = () => {
     setAuthStage('login');
-    setGoogleUser(null);
+    setUser(null);
+    setEmail('');
+    setPassword('');
     setError('');
     setFrameCount(0);
+    setFramesAcked(0);
     setDetectionResult(null);
     setLivelinessStatus('');
+    setIsAuthenticated(false);
+    setProcessingStatus('Idle');
+    setConnectionTime('00:00');
     cleanupWebcam();
     if (wsRef.current) {
       wsRef.current.close();
@@ -373,37 +430,85 @@ const MoverisAuthApp = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Secure Login
           </h1>
-          <p className="text-gray-600">
-            Powered by Moveris Liveliness Detection
+          <p className="text-gray-600" align="center">
+            Powered by<img width="150px"  src="https://developers.moveris.com/uploads/MoverisLiveLogo.png" alt="Moveris Liveliness Detection"/>
           </p>
         </div>
 
         {/* Login Stage */}
         {authStage === 'login' && (
           <div className="space-y-6">
-            <div className="text-center">
-              <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-700 mb-6">
-                Sign in with your Google account to continue
+            <div className="text-center mb-4">
+              <User className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-700">
+                Sign in to continue
               </p>
             </div>
             
-            <div className="flex justify-center">
-              {/* Google Sign-In Button Container */}
-              <div ref={googleButtonRef} className="min-h-[44px]">
-                {!googleLoaded && (
-                  <div className="flex items-center justify-center space-x-2 text-gray-500">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Loading Google Sign-In...</span>
-                  </div>
-                )}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                  placeholder="admin@example.com"
+                  required
+                />
               </div>
-            </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition pr-12"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              >
+                Sign In
+              </button>
+            </form>
 
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-800">
-                <strong>Two-Factor Authentication:</strong> After Google login, 
-                you'll complete a quick liveliness check using your webcam.
+                <strong>Two-Factor Authentication:</strong> After login, 
+                you'll complete a liveliness check using your webcam.
+              </p>
+            </div>
+
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs text-gray-600 text-center">
+                Demo Credentials: admin@example.com / Admin@123
               </p>
             </div>
           </div>
@@ -420,17 +525,10 @@ const MoverisAuthApp = () => {
                 </h2>
               </div>
               
-              {googleUser && (
-                <div className="flex items-center justify-center space-x-3 mb-4">
-                  <img 
-                    src={googleUser.picture} 
-                    alt={googleUser.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900">{googleUser.name}</p>
-                    <p className="text-sm text-gray-600">{googleUser.email}</p>
-                  </div>
+              {user && (
+                <div className="mb-4">
+                  <p className="font-medium text-gray-900">{user.name}</p>
+                  <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
               )}
             </div>
@@ -451,22 +549,39 @@ const MoverisAuthApp = () => {
               
               {/* Status Overlay */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                <div className="flex items-center justify-between text-white">
+                <div className="flex items-center justify-between text-white text-xs">
                   <div className="flex items-center space-x-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">{livelinessStatus}</span>
+                    <span>{livelinessStatus}</span>
                   </div>
-                  <span className="text-sm font-mono">
-                    Frames: {frameCount}
-                  </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-600 mb-1">Frames Sent</p>
+                <p className="text-lg font-bold text-indigo-600">{frameCount}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-600 mb-1">Frames Ack'd</p>
+                <p className="text-lg font-bold text-indigo-600">{framesAcked}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-600 mb-1">Time</p>
+                <p className="text-lg font-bold text-indigo-600">{connectionTime}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-600 mb-1">Status</p>
+                <p className="text-lg font-bold text-indigo-600">{processingStatus}</p>
               </div>
             </div>
 
             <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
               <p className="text-sm text-amber-800">
                 <strong>Please look at the camera.</strong> Keep your face 
-                visible and well-lit for accurate detection.
+                visible and well-lit. Processing requires {CONFIG.REQUIRED_FRAMES} frames.
               </p>
             </div>
           </div>
@@ -488,18 +603,22 @@ const MoverisAuthApp = () => {
               </p>
             </div>
 
-            {googleUser && (
+            {user && (
               <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-center space-x-3 mb-2">
-                  <img 
-                    src={googleUser.picture} 
-                    alt={googleUser.name}
-                    className="w-12 h-12 rounded-full"
-                  />
-                  <div className="text-left">
-                    <p className="font-semibold text-gray-900">{googleUser.name}</p>
-                    <p className="text-sm text-gray-600">{googleUser.email}</p>
-                  </div>
+                <p className="font-semibold text-gray-900">{user.name}</p>
+                <p className="text-sm text-gray-600">{user.email}</p>
+              </div>
+            )}
+
+            {detectionResult && (
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200 text-left">
+                <h3 className="font-semibold text-green-900 mb-2">Detection Results:</h3>
+                <div className="space-y-1 text-sm text-green-800">
+                  <p><strong>Prediction:</strong> {detectionResult.prediction}</p>
+                  <p><strong>Confidence:</strong> {(detectionResult.confidence * 100).toFixed(2)}%</p>
+                  {detectionResult.ai_probability && (
+                    <p><strong>AI Probability:</strong> {(detectionResult.ai_probability * 100).toFixed(2)}%</p>
+                  )}
                 </div>
               </div>
             )}

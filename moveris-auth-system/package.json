@@ -12,7 +12,6 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@react-oauth/google": "^0.12.1",
     "lucide-react": "^0.263.1"
   },
   "devDependencies": {
@@ -38,5 +37,13 @@
     "security"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/moveris-liveliness-auth.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/moveris-liveliness-auth/issues"
+  },
+  "homepage": "https://github.com/yourusername/moveris-liveliness-auth#readme"
 }

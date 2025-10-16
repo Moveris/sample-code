@@ -5,8 +5,7 @@ Get the Moveris Liveliness Authentication system running in 5 minutes.
 ## 📋 Prerequisites
 
 - Node.js 16+ installed
-- Google account (for OAuth setup)
-- Moveris developer account
+- Moveris developer account with secret key
 - Webcam-enabled device
 
 ## 🚀 Setup Steps
@@ -19,47 +18,56 @@ npm install
 
 This installs:
 - React & React DOM
-- @react-oauth/google (Google authentication)
 - lucide-react (UI icons)
 - Tailwind CSS (styling)
 - Vite (build tool)
 
-### 2. Get Google OAuth Credentials (2 minutes)
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create new project (or select existing)
-3. Enable "Google+ API"
-4. Navigate to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
-5. Set application type to "Web application"
-6. Add to "Authorized JavaScript origins":
-   ```
-   http://localhost:5173
-   ```
-7. Copy your Client ID (looks like: `xxxxx.apps.googleusercontent.com`)
-
-### 3. Get Moveris API Credentials (1 minute)
+### 2. Get Moveris API Credentials (2 minutes)
 
 1. Sign up at [Moveris Developer Portal](https://developers.moveris.com)
 2. Create a new application
 3. Copy your:
-   - WebSocket URI: `wss://developers.moveris.com/ws/live/v1/`
-   - Authentication Token: `Bearer your_token_here`
+   - WebSocket URI: `wss://dev.api.moveris.com/ws/live/v1/`
+   - Secret Key: `your_secret_key_here`
 
-### 4. Configure Application (1 minute)
+### 3. Configure Application (1 minute)
 
-Open `src/App.jsx` and update lines 24-27:
+**Option A: Using Environment Variables (Recommended)**
 
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+2. Edit `.env` and update with your credentials:
+```env
+VITE_MOVERIS_WS_URI=wss://dev.api.moveris.com/ws/live/v1/
+VITE_MOVERIS_SECRET_KEY=paste_your_secret_key_here
+VITE_FRAME_RATE=10
+VITE_IMAGE_QUALITY=0.7
+VITE_REQUIRED_FRAMES=500
+VITE_ADMIN_EMAIL=admin@example.com
+VITE_ADMIN_PASSWORD=Admin@123
+```
+
+**Option B: Direct Code Configuration**
+
+Open `src/App.jsx` and update the CONFIG object (lines 22-30):
 ```javascript
 const CONFIG = {
-  GOOGLE_CLIENT_ID: "paste_your_google_client_id_here",
-  MOVERIS_WS_URI: "wss://developers.moveris.com/ws/live/v1/",
-  MOVERIS_AUTH_TOKEN: "Bearer paste_your_moveris_token_here",
-  FRAME_CAPTURE_INTERVAL: 500,
-  LIVELINESS_DURATION: 5000,
+  MOVERIS_WS_URI: "wss://dev.api.moveris.com/ws/live/v1/",
+  MOVERIS_SECRET_KEY: "paste_your_secret_key_here",
+  FRAME_RATE: 10,
+  IMAGE_QUALITY: 0.7,
+  REQUIRED_FRAMES: 500,
+  ADMIN_EMAIL: "admin@example.com",
+  ADMIN_PASSWORD: "Admin@123",
 };
 ```
 
-### 5. Run Development Server
+**Note:** Environment variables (Option A) are recommended as they keep credentials out of your code.
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
@@ -69,34 +77,38 @@ Open browser to `http://localhost:5173`
 
 ## ✅ Testing the Flow
 
-1. **Click "Continue with Google"** button
-2. **Sign in** with your Google account
+1. **Enter login credentials**
+   - Email: admin@example.com
+   - Password: Admin@123
+2. **Click "Sign In"** button
 3. **Allow webcam access** when prompted
-4. **Look at the camera** for 5 seconds
-5. **Success!** You should see a success message
+4. **Look at the camera** while 500 frames are captured
+5. **Wait for processing** (takes about 50 seconds at 10 FPS)
+6. **Success!** You should see verification results
 
 ## 🎯 What Should Happen
 
 ```
 Step 1: Login Screen
-├─ Shows Google Sign In button
+├─ Shows email/password form
+├─ Enter: admin@example.com / Admin@123
 └─ Info about 2FA liveliness check
 
-Step 2: Google Authentication
-├─ Redirects to Google
-├─ User signs in
-└─ Returns to app with user info
+Step 2: Email/Password Authentication
+├─ Validates credentials
+└─ Proceeds to webcam stage
 
 Step 3: Liveliness Check
 ├─ Requests webcam access
 ├─ Connects to Moveris WebSocket
-├─ Sends authentication token
-├─ Captures video frames (every 500ms)
-├─ Sends frames to Moveris API
+├─ Sends secret key for authentication
+├─ Captures video frames at 10 FPS
+├─ Sends 500 frames to Moveris API
+├─ Shows real-time stats (frames sent, ack'd, time)
 └─ Receives liveliness result
 
 Step 4: Success/Failure
-├─ Success: Shows user profile and success message
+├─ Success: Shows detection results and user profile
 └─ Failure: Shows error with retry option
 ```
 
@@ -106,21 +118,25 @@ Step 4: Success/Failure
 - **Cause**: Browser doesn't have camera permission
 - **Fix**: Click lock icon in address bar → Allow camera
 
-### "Google login failed"
-- **Cause**: Incorrect Client ID or unauthorized origin
-- **Fix**: Double-check Client ID and add `http://localhost:5173` to authorized origins
+### "Invalid email or password"
+- **Cause**: Incorrect credentials entered
+- **Fix**: Use admin@example.com / Admin@123 or update CONFIG in App.jsx
 
 ### "Connection error" or WebSocket fails
-- **Cause**: Incorrect Moveris credentials or network issue
-- **Fix**: Verify token format includes "Bearer " prefix
+- **Cause**: Incorrect Moveris secret key or network issue
+- **Fix**: Verify secret key is correct (no "Bearer" prefix needed)
 
 ### Black video screen
 - **Cause**: Camera in use by another app
 - **Fix**: Close other apps using camera (Zoom, Teams, etc.)
 
-### Nothing happens after Google login
-- **Cause**: Browser blocked WebSocket or webcam
-- **Fix**: Check browser console (F12) for error messages
+### Nothing happens after login
+- **Cause**: WebSocket connection or authentication failed
+- **Fix**: Check browser console (F12) for error messages and verify secret key
+
+### Frames not processing
+- **Cause**: Not enough frames sent or connection dropped
+- **Fix**: Wait for all 500 frames to be sent. Check "Frames Sent" counter
 
 ## 📱 Testing on Mobile
 
@@ -279,4 +295,3 @@ Open browser console (F12) to see:
 **Estimated Total Time**: 5-10 minutes
 
 For detailed documentation, see [README.md](./README.md)
-
