@@ -45,7 +45,7 @@ Open `src/App.jsx` and update the `CONFIG` object (lines 22-30):
 
 ```javascript
 const CONFIG = {
-  MOVERIS_WS_URI: "wss://dev.api.moveris.com/ws/live/v1/",
+  MOVERIS_WS_URI: "wss://developers.moveris.com/ws/live/v1/",
   MOVERIS_SECRET_KEY: "your_moveris_secret_key_here",
   FRAME_RATE: 10,              // Frames per second (1-60)
   IMAGE_QUALITY: 0.7,          // JPEG quality (0.1-1.0)
@@ -80,7 +80,7 @@ Navigate to `http://localhost:5173` (or the port shown in terminal)
 1. **Sign up** at [Moveris Developer Portal](https://developers.moveris.com)
 2. **Create a new application**
 3. **Copy your credentials:**
-   - WebSocket URI: `wss://dev.api.moveris.com/ws/live/v1/`
+   - WebSocket URI: `wss://developers.moveris.com/ws/live/v1/`
    - Secret Key: Your unique secret key (no "Bearer" prefix needed)
 4. **Update configuration** in `src/App.jsx`
 
@@ -202,7 +202,7 @@ const stream = await navigator.mediaDevices.getUserMedia({
                  ▼
 ┌─────────────────────────────────────────────────────────┐
 │  4. WebSocket Connection                                │
-│     ├─ Connect to: wss://dev.api.moveris.com/ws/...    │
+│     ├─ Connect to: wss://developers.moveris.com/ws/...    │
 │     ├─ Server sends: {"type":"auth_required"}          │
 │     └─ Start connection timer                           │
 └────────────────┬────────────────────────────────────────┘
@@ -257,7 +257,7 @@ const stream = await navigator.mediaDevices.getUserMedia({
 #### 1. Connection & Authentication
 ```javascript
 // Client connects
-ws = new WebSocket("wss://dev.api.moveris.com/ws/live/v1/");
+ws = new WebSocket("wss://developers.moveris.com/ws/live/v1/");
 
 // Server responds
 ← {"type": "auth_required"}
@@ -349,7 +349,7 @@ moveris-auth-system/
 
 #### Connection Setup
 ```javascript
-const ws = new WebSocket("wss://dev.api.moveris.com/ws/live/v1/");
+const ws = new WebSocket("wss://developers.moveris.com/ws/live/v1/");
 
 ws.onopen = () => {
   console.log('Connected to Moveris');
@@ -379,7 +379,7 @@ ws.onmessage = (event) => {
 ```javascript
 class MoverisClient {
   constructor(secretKey) {
-    this.ws = new WebSocket('wss://dev.api.moveris.com/ws/live/v1/');
+    this.ws = new WebSocket('wss://developers.moveris.com/ws/live/v1/');
     this.secretKey = secretKey;
     this.frameCount = 0;
     
@@ -559,7 +559,7 @@ Create `.env` file for production:
 
 ```env
 # Moveris Configuration
-VITE_MOVERIS_WS_URI=wss://dev.api.moveris.com/ws/live/v1/
+VITE_MOVERIS_WS_URI=wss://developers.moveris.com/ws/live/v1/
 VITE_MOVERIS_SECRET_KEY=your_production_secret_key
 
 # Frame Settings
@@ -575,7 +575,7 @@ Update config to use environment variables:
 
 ```javascript
 const CONFIG = {
-  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://dev.api.moveris.com/ws/live/v1/",
+  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://developers.moveris.com/ws/live/v1/",
   MOVERIS_SECRET_KEY: import.meta.env.VITE_MOVERIS_SECRET_KEY || "",
   FRAME_RATE: parseInt(import.meta.env.VITE_FRAME_RATE) || 10,
   IMAGE_QUALITY: parseFloat(import.meta.env.VITE_IMAGE_QUALITY) || 0.7,
@@ -641,7 +641,7 @@ app.ws('/api/liveliness', verifyJWT, (ws, req) => {
   const userId = req.user.userId;
   
   // Connect to Moveris with server-side secret
-  const moverisWs = new WebSocket('wss://dev.api.moveris.com/ws/live/v1/');
+  const moverisWs = new WebSocket('wss://developers.moveris.com/ws/live/v1/');
   
   moverisWs.on('open', () => {
     console.log(`User ${userId} connected to Moveris`);
@@ -735,7 +735,7 @@ app.listen(3000, () => {
 - **Solution:** Verify Moveris secret key is correct
 - **Check:** No "Bearer" prefix in secret key
 - **Check:** Network allows WebSocket connections (check firewall)
-- **Check:** Using correct WebSocket URL: `wss://dev.api.moveris.com/ws/live/v1/`
+- **Check:** Using correct WebSocket URL: `wss://developers.moveris.com/ws/live/v1/`
 
 **Problem:** "Connection closed unexpectedly"
 - **Solution:** Check network stability

@@ -27,7 +27,7 @@ This installs:
 1. Sign up at [Moveris Developer Portal](https://developers.moveris.com)
 2. Create a new application
 3. Copy your:
-   - WebSocket URI: `wss://dev.api.moveris.com/ws/live/v1/`
+   - WebSocket URI: `wss://developers.moveris.com/ws/live/v1/`
    - Secret Key: `your_secret_key_here`
 
 ### 3. Configure Application (1 minute)
@@ -41,7 +41,7 @@ cp .env.example .env
 
 2. Edit `.env` and update with your credentials:
 ```env
-VITE_MOVERIS_WS_URI=wss://dev.api.moveris.com/ws/live/v1/
+VITE_MOVERIS_WS_URI=wss://developers.moveris.com/ws/live/v1/
 VITE_MOVERIS_SECRET_KEY=paste_your_secret_key_here
 VITE_FRAME_RATE=10
 VITE_IMAGE_QUALITY=0.7
@@ -55,7 +55,7 @@ VITE_ADMIN_PASSWORD=Admin@123
 Open `src/App.jsx` and update the CONFIG object (lines 22-30):
 ```javascript
 const CONFIG = {
-  MOVERIS_WS_URI: "wss://dev.api.moveris.com/ws/live/v1/",
+  MOVERIS_WS_URI: "wss://developers.moveris.com/ws/live/v1/",
   MOVERIS_SECRET_KEY: "paste_your_secret_key_here",
   FRAME_RATE: 10,
   IMAGE_QUALITY: 0.7,
