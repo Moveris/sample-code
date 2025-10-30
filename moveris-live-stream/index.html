@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moveris Live</title>
+    <link rel="icon" href="./logo_small.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0px;
+            background-color: #0c2f54;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .column {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        /* Left Column - Configuration */
+        .left-column {
+            min-height: 78vh;
+        }
+
+        /* Middle Column - Video and Controls */
+        .middle-column {
+            min-height: 78vh;
+        }
+
+        /* Right Column - Predictions */
+        .right-column {
+            min-height: 78vh;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            max-width: 1360px;
+        }
+
+        h2, h3 {
+            color: #333;
+            margin-top: 0;
+        }
+
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 6px 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #d1ecf1;
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .config-section label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .config-section input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        .video-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        video {
+            max-width: 100%;
+            width: 100%;
+            max-height: 360px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: #000;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 180px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .start-btn {
+            background-color: #28a745;
+        }
+
+        .start-btn:hover {
+            background-color: #218838;
+        }
+
+        .stop-btn {
+            background-color: #dc3545;
+        }
+
+        .stop-btn:hover {
+            background-color: #c82333;
+        }
+
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .status.connecting {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+
+        .status.authenticated {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+
+        .status.streaming {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .logs {
+            margin-top: 20px;
+            max-width: 300px;
+        }
+
+        #logs {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            width: 280px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-card h4 {
+            margin: 0 0 5px 0;
+            color: #495057;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .performance-card {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .performance-card h4 {
+            margin: 0 0 5px 0;
+            color: #0056b3;
+            font-size: 11px;
+        }
+
+        .performance-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0056b3;
+        }
+
+        .clear-logs {
+            background-color: #6c757d;
+            font-size: 12px;
+            padding: 5px 10px;
+            float: right;
+            margin-bottom: 10px;
+            min-width: auto;
+        }
+
+        #predictionsTable {
+            width: 100%;
+            font-size: 12px;
+        }
+
+        #predictionsTable th,
+        #predictionsTable td {
+            padding: 8px 4px;
+        }
+
+        .predictions-section {
+            margin-top: 0;
+        }
+
+        .predictions-section p {
+            margin: 10px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* New performance stats section */
+        .performance-stats {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .performance-stats h4 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .perf-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            h1 {
+                grid-column: 1;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            button {
+                min-width: 200px;
+            }
+
+            video {
+                max-height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .column {
+                padding: 15px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            #predictionsTable {
+                font-size: 12px;
+            }
+
+            #predictionsTable th,
+            #predictionsTable td {
+                padding: 6px 4px;
+            }
+
+            button {
+                min-width: 150px;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1><img width="200" src="./MoverisLiveLogo.png"></h1>
+
+    <div class="main-container">
+        <!-- Left Column - Configuration -->
+        <div class="column left-column">
+            <div class="config-section">
+                <h3>🔧 Configuration</h3>
+
+                <label for="secretKey">Secret Key:</label>
+                <input type="password" id="secretKey" value="" placeholder="Enter secret key">
+
+                <label for="frameRate">Frame Rate (FPS):</label>
+                <input type="number" id="frameRate" value="10" min="1" max="60" placeholder="Frame rate">
+
+                <label for="quality">Image Quality (0.1 - 1.0):</label>
+                <input type="number" id="quality" value="0.7" min="0.1" max="1.0" step="0.1" placeholder="Image quality">
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <h4>Frames Sent</h4>
+                    <div class="stat-value" id="framesSent">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Frames Ack'd</h4>
+                    <div class="stat-value" id="serverBuffer">0</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Connection Time</h4>
+                    <div class="stat-value" id="connectionTime">--:--</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Processing Status</h4>
+                    <div class="stat-value" id="processingStatus">Idle</div>
+                </div>
+            </div>
+
+            <div class="performance-stats">
+                <h4>📊 Performance Metrics</h4>
+                <div class="perf-grid">
+                    <div class="performance-card">
+                        <h4>Avg Send Time</h4>
+                        <div class="performance-value" id="avgSendTime">--</div>
+                    </div>
+                    <div class="performance-card">
+                        <h4>Avg ACK Time</h4>
+                        <div class="performance-value" id="avgAckTime">--</div>
+                    </div>
+                    <div class="performance-card">
+                        <h4>Actual FPS</h4>
+                        <div class="performance-value" id="actualFps">--</div>
+                    </div>
+                    <div class="performance-card">
+                        <h4>Process Time</h4>
+                        <div class="performance-value" id="processTime">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Column - Video, Controls, and Logs -->
+        <div class="column middle-column">
+            <div class="video-container">
+                <video id="videoElement" autoplay muted playsinline>
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="controls">
+                <button id="startStreamBtn" onclick="startStreaming()" class="start-btn">
+                    🚀 Start Streaming
+                </button>
+                <button id="stopStreamBtn" onclick="stopStreaming()" disabled class="stop-btn">
+                    ⏹️ Stop & Disconnect
+                </button>
+            </div>
+
+            <div id="status" class="status disconnected">
+                📡 Status: Ready to start streaming
+            </div>
+
+        </div>
+
+        <!-- Right Column - Model Predictions -->
+        <div class="column right-column">
+            <div class="predictions-section">
+                <h2>Model Predictions</h2>
+                <p>Latest predictions will be updated below.</p>
+
+                <table id="predictionsTable" aria-label="Predictions table">
+                    <tbody id="resultBody">
+                        <tr><td style="font-weight:600">Prediction</td>              <td>-</td></tr>
+                        <tr><td style="font-weight:600">AI Probability</td>          <td>-</td></tr>
+                        <tr><td style="font-weight:600">Confidence</td>              <td>-</td></tr>
+                        <tr><td style="font-weight:600">Processing Time</td>         <td>-</td></tr>
+                        <tr><td style="font-weight:600">Attention</td>               <td>-</td></tr>
+                        <tr><td style="font-weight:600">Emotion</td>                 <td>-</td></tr>
+                        <tr><td style="font-weight:600" class="meta">Received At</td><td>-</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="logs">
+                <button class="clear-logs" onclick="clearLogs()">Clear Logs</button>
+                <div id="logs"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // VideoWebSocketClient Class - OPTIMIZED VERSION
+        class VideoWebSocketClient {
+            constructor(wsUrl, secretKey) {
+                this.wsUrl = wsUrl;
+                this.secretKey = secretKey;
+                this.socket = null;
+                this.frameCount = 0;
+                this.serverBufferSize = 0;
+                this.connectionStartTime = null;
+                this.isAuthenticated = false;
+
+                // Performance tracking
+                this.lastFrameTime = null;
+                this.frameTimes = [];
+                this.ackTimes = [];
+                this.frameSendTimes = new Map(); // Track when each frame was sent
+
+                // Frame rate calculation
+                this.fpsCounter = 0;
+                this.fpsStartTime = Date.now();
+            }
+
+            connect() {
+                return new Promise((resolve, reject) => {
+                    try {
+                        this.socket = new WebSocket(this.wsUrl);
+                        this.connectionStartTime = Date.now();
+
+                        this.socket.onopen = () => {
+                            console.log('WebSocket connected');
+                            this.log('✅ WebSocket connected successfully');
+                            updateStatus('Connected, authenticating...', 'connecting');
+                        };
+
+                        this.socket.onmessage = (event) => {
+                            const data = JSON.parse(event.data);
+                            this.handleMessage(data);
+                        };
+
+                        this.socket.onclose = (event) => {
+                            console.log('WebSocket closed:', event.code);
+                            this.log(`🔌 WebSocket closed: ${event.code} - ${event.reason || 'No reason provided'}`);
+                            updateStatus('Disconnected', 'disconnected');
+                            this.resetConnection();
+                            reject(new Error(`Connection closed: ${event.code}`));
+                        };
+
+                        this.socket.onerror = (error) => {
+                            console.error('WebSocket error:', error);
+                            this.log('❌ WebSocket error occurred');
+                            updateStatus('Connection error', 'disconnected');
+                            reject(error);
+                        };
+
+                        resolve();
+
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            }
+
+            updateTable(data) {
+                const tbody = document.getElementById("resultBody");
+
+                // Handle error cases
+                if (data.prediction === 'Error' || data.processing_error) {
+                    tbody.innerHTML = `
+                        <tr><td style="font-weight:600">Prediction</td>              <td style="color: red;">Error</td></tr>
+                        <tr><td style="font-weight:600">AI Probability</td>          <td>-</td></tr>
+                        <tr><td style="font-weight:600">Confidence</td>              <td>-</td></tr>
+                        <tr><td style="font-weight:600">Processing Time</td>         <td>${data.processing_time_seconds ? data.processing_time_seconds.toFixed(2) + 's' : '-'}</td></tr>
+                        <tr><td style="font-weight:600">Error</td>                   <td style="color: red; font-size: 11px;">${data.processing_error || 'Unknown error'}</td></tr>
+                        <tr><td style="font-weight:600" class="meta">Received At</td><td>${new Date().toLocaleString()}</td></tr>
+                    `;
+                } else {
+                    // Normal result display
+                    const predictionColor = data.prediction === 'AI' ? 'red' : 'green';
+                    tbody.innerHTML = `
+                        <tr><td style="font-weight:600">Prediction</td>              <td style="color: ${predictionColor}; font-weight: bold;">${data.prediction}</td></tr>
+                        <tr><td style="font-weight:600">AI Probability</td>          <td>${(data.ai_probability * 100).toFixed(2)}%</td></tr>
+                        <tr><td style="font-weight:600">Confidence</td>              <td>${data.confidence.toFixed(4)}</td></tr>
+                        <tr><td style="font-weight:600">Processing Time</td>         <td>${data.processing_time_seconds.toFixed(2)}s</td></tr>
+                        <tr><td style="font-weight:600">Attention</td>               <td>${data.attention || '-'}</td></tr>
+                        <tr><td style="font-weight:600">Emotion</td>                 <td>${data.emotion || '-'}</td></tr>
+                        <tr><td style="font-weight:600" class="meta">Received At</td><td>${new Date().toLocaleString()}</td></tr>
+                    `;
+                }
+
+                // Update processing time metric
+                if (data.processing_time_seconds) {
+                    document.getElementById('processTime').textContent = `${data.processing_time_seconds.toFixed(2)}s`;
+                }
+            }
+
+            handleMessage(data) {
+                const receiveTime = Date.now();
+
+                switch(data.type) {
+                    case 'auth_required':
+                        this.log('🔑 Authentication required');
+                        this.authenticate();
+                        break;
+
+                    case 'auth_success':
+                        console.log('Authenticated successfully');
+                        this.log('✅ Authentication successful');
+                        this.isAuthenticated = true;
+                        updateStatus('Authenticated - Starting camera...', 'authenticated');
+                        // Auto-start camera after authentication
+                        setTimeout(() => this.startCamera(), 500);
+                        break;
+
+                    case 'frame_received':
+                        // Calculate ACK latency
+                        const frameNum = data.frame_number;
+                        if (this.frameSendTimes.has(frameNum)) {
+                            const sendTime = this.frameSendTimes.get(frameNum);
+                            const ackLatency = receiveTime - sendTime;
+                            this.ackTimes.push(ackLatency);
+
+                            // Keep only last 50 measurements
+                            if (this.ackTimes.length > 50) {
+                                this.ackTimes.shift();
+                            }
+
+                            // Update average ACK time
+                            const avgAck = this.ackTimes.reduce((a, b) => a + b, 0) / this.ackTimes.length;
+                            document.getElementById('avgAckTime').textContent = `${avgAck.toFixed(0)}ms`;
+
+                            // Clean up old send times
+                            this.frameSendTimes.delete(frameNum);
+                        }
+
+                        // Update server buffer size
+                        this.serverBufferSize = data.total_frames || 0;
+                        document.getElementById('serverBuffer').textContent = this.serverBufferSize;
+
+                        // Log less frequently to reduce clutter
+                        if (frameNum % 50 === 0) {
+                            this.log(`📊 Frame ${frameNum} ACK. Buffer: ${this.serverBufferSize}`);
+                        }
+                        break;
+
+                    case 'processing_started':
+                        console.log('Processing started:', data.message);
+                        this.log(`🔄 ${data.message}`);
+                        const processingStatusEl = document.getElementById('processingStatus');
+                        processingStatusEl.textContent = 'Processing';
+                        processingStatusEl.style.color = '#856404';
+                        processingStatusEl.style.backgroundColor = '#fff3cd';
+                        processingStatusEl.style.padding = '5px 10px';
+                        processingStatusEl.style.borderRadius = '4px';
+                        processingStatusEl.style.fontWeight = 'bold';
+                        break;
+
+                    case 'processing_complete':
+                        console.log('Processing complete:', data.result);
+                        this.log(`✅ Processed ${data.frames_processed} frames`);
+                        this.updateTable(data.result);
+                        const completeStatusEl = document.getElementById('processingStatus');
+                        completeStatusEl.textContent = 'Complete';
+                        completeStatusEl.style.color = '#155724';
+                        completeStatusEl.style.backgroundColor = '#d4edda';
+                        completeStatusEl.style.padding = '5px 10px';
+                        completeStatusEl.style.borderRadius = '4px';
+                        completeStatusEl.style.fontWeight = 'bold';
+
+                        // Reset to idle after 3 seconds
+                        setTimeout(() => {
+                            const statusEl = document.getElementById('processingStatus');
+                            if (statusEl.textContent === 'Complete') {
+                                statusEl.textContent = 'Idle';
+                                statusEl.style.color = '#007bff';
+                                statusEl.style.backgroundColor = 'transparent';
+                                statusEl.style.padding = '0';
+                                statusEl.style.fontWeight = 'bold';
+                            }
+                        }, 3000);
+                        break;
+
+                    case 'error':
+                        console.error('Server error:', data.message);
+                        this.log(`❌ Server error: ${data.message}`);
+                        updateStatus(`Error: ${data.message}`, 'disconnected');
+
+                        const tbody = document.getElementById("resultBody");
+                        tbody.innerHTML = `
+                            <tr><td style="font-weight:600">Status</td>                 <td style="color: red;">Error</td></tr>
+                            <tr><td style="font-weight:600">Message</td>                <td style="color: red; font-size: 11px;">${data.message}</td></tr>
+                            <tr><td style="font-weight:600" class="meta">Received At</td><td>${new Date().toLocaleString()}</td></tr>
+                        `;
+                        break;
+
+                    default:
+                        this.log(`ℹ️ Unknown message type: ${data.type}`);
+                        break;
+                }
+            }
+
+            authenticate() {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    this.socket.send(JSON.stringify({
+                        type: 'auth',
+                        token: this.secretKey
+                    }));
+                    this.log('🔑 Sending authentication...');
+                }
+            }
+
+            async startCamera() {
+                try {
+                    const constraints = {
+                        video: {
+                            width: { ideal: 640 },
+                            height: { ideal: 480 },
+                            frameRate: { ideal: parseInt(document.getElementById('frameRate').value) }
+                        },
+                        audio: false
+                    };
+
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    document.getElementById('videoElement').srcObject = stream;
+
+                    this.log('📷 Camera accessed successfully');
+                    updateStatus('Streaming and processing video...', 'streaming');
+
+                    // Enable stop button
+                    document.getElementById('stopStreamBtn').disabled = false;
+
+                    // Start frame capture
+                    this.startFrameCapture();
+
+                    // Start FPS counter
+                    this.startFpsCounter();
+
+                    return stream;
+
+                } catch (error) {
+                    console.error('❌ Error accessing camera:', error);
+                    this.log(`❌ Camera error: ${error.message}`);
+
+                    if (error.name === 'NotAllowedError') {
+                        updateStatus('Camera access denied', 'disconnected');
+                        alert('❌ Camera access denied. Please allow camera permissions and try again.');
+                    } else if (error.name === 'NotFoundError') {
+                        updateStatus('No camera found', 'disconnected');
+                        alert('❌ No camera found. Please connect a camera and try again.');
+                    } else {
+                        updateStatus(`Camera error: ${error.message}`, 'disconnected');
+                        alert(`❌ Camera error: ${error.message}`);
+                    }
+                    throw error;
+                }
+            }
+
+            startFrameCapture() {
+                if (!this.canvas) {
+                    this.canvas = document.createElement('canvas');
+                    this.ctx = this.canvas.getContext('2d');
+                }
+
+                const frameRate = parseInt(document.getElementById('frameRate').value);
+                const frameInterval = 1000 / frameRate;
+
+                let lastCaptureTime = Date.now();
+
+                this.streamingInterval = setInterval(() => {
+                    const now = Date.now();
+                    const elapsed = now - lastCaptureTime;
+
+                    // Track frame timing for performance
+                    if (this.lastFrameTime) {
+                        this.frameTimes.push(elapsed);
+                        if (this.frameTimes.length > 50) {
+                            this.frameTimes.shift();
+                        }
+
+                        // Update average send time
+                        const avgTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+                        document.getElementById('avgSendTime').textContent = `${avgTime.toFixed(0)}ms`;
+                    }
+
+                    this.captureAndSendFrame();
+                    lastCaptureTime = now;
+                    this.lastFrameTime = now;
+                }, frameInterval);
+
+                this.log(`🎥 Started frame capture at ${frameRate} FPS`);
+            }
+
+            startFpsCounter() {
+                this.fpsInterval = setInterval(() => {
+                    const elapsed = (Date.now() - this.fpsStartTime) / 1000;
+                    const fps = this.fpsCounter / elapsed;
+
+                    document.getElementById('actualFps').textContent = fps.toFixed(1);
+
+                    // Reset counter every 5 seconds
+                    if (elapsed >= 5) {
+                        this.fpsCounter = 0;
+                        this.fpsStartTime = Date.now();
+                    }
+                }, 1000);
+            }
+
+            captureAndSendFrame() {
+                if (!this.socket || !this.isAuthenticated) {
+                    return;
+                }
+
+                try {
+                    const video = document.getElementById('videoElement');
+
+                    // Set canvas size to match video
+                    this.canvas.width = video.videoWidth || 640;
+                    this.canvas.height = video.videoHeight || 480;
+
+                    // Draw current video frame to canvas
+                    this.ctx.drawImage(video, 0, 0, this.canvas.width, this.canvas.height);
+
+                    // Convert to base64
+                    const quality = parseFloat(document.getElementById('quality').value);
+                    const base64Data = this.canvas.toDataURL('image/jpeg', quality).split(',')[1];
+
+                    // Send frame
+                    this.sendFrame(base64Data);
+                    this.fpsCounter++;
+
+                } catch (error) {
+                    console.error('❌ Error capturing frame:', error);
+                    this.log(`❌ Frame capture error: ${error.message}`);
+                }
+            }
+
+            sendFrame(frameData) {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN && this.isAuthenticated) {
+                    this.frameCount++;
+                    const sendTime = Date.now();
+
+                    // Track send time for this frame
+                    this.frameSendTimes.set(this.frameCount, sendTime);
+
+                    // Clean up very old send times (> 1000 frames ago)
+                    if (this.frameSendTimes.size > 1000) {
+                        const oldestFrame = this.frameCount - 1000;
+                        for (let i = oldestFrame - 100; i < oldestFrame; i++) {
+                            this.frameSendTimes.delete(i);
+                        }
+                    }
+
+                    this.socket.send(JSON.stringify({
+                        type: 'frame',
+                        frame_number: this.frameCount,
+                        frame_data: frameData,
+                        timestamp: sendTime / 1000
+                    }));
+
+                    document.getElementById('framesSent').textContent = this.frameCount;
+                    return true;
+                }
+                return false;
+            }
+
+            disconnect() {
+                // Stop streaming first
+                if (this.streamingInterval) {
+                    clearInterval(this.streamingInterval);
+                    this.streamingInterval = null;
+                }
+
+                // Stop FPS counter
+                if (this.fpsInterval) {
+                    clearInterval(this.fpsInterval);
+                    this.fpsInterval = null;
+                }
+
+                // Stop camera
+                const video = document.getElementById('videoElement');
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+
+                // Close WebSocket
+                if (this.socket) {
+                    this.socket.close();
+                    this.socket = null;
+                }
+
+                this.log('⏹️ Streaming stopped and disconnected');
+                this.resetConnection();
+            }
+
+            resetConnection() {
+                this.frameCount = 0;
+                this.serverBufferSize = 0;
+                this.isAuthenticated = false;
+                this.connectionStartTime = null;
+                this.frameTimes = [];
+                this.ackTimes = [];
+                this.frameSendTimes.clear();
+                this.fpsCounter = 0;
+                this.fpsStartTime = Date.now();
+
+                // Reset UI
+                document.getElementById('framesSent').textContent = '0';
+                document.getElementById('serverBuffer').textContent = '0';
+                document.getElementById('connectionTime').textContent = '--:--';
+
+                // Reset Processing Status with normal styling
+                const statusEl = document.getElementById('processingStatus');
+                statusEl.textContent = 'Idle';
+                statusEl.style.color = '#007bff';
+                statusEl.style.backgroundColor = 'transparent';
+                statusEl.style.padding = '0';
+                statusEl.style.fontWeight = 'bold';
+
+                document.getElementById('avgSendTime').textContent = '--';
+                document.getElementById('avgAckTime').textContent = '--';
+                document.getElementById('actualFps').textContent = '--';
+                document.getElementById('processTime').textContent = '--';
+
+                // Reset buttons
+                document.getElementById('startStreamBtn').disabled = false;
+                document.getElementById('stopStreamBtn').disabled = true;
+            }
+
+            log(message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logElement = document.getElementById('logs');
+                logElement.insertAdjacentHTML("beforeend", `[${timestamp}] ${message}<br>`);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+
+        // Global variables
+        let client = null;
+        let connectionTimer = null;
+
+        // Update status display
+        function updateStatus(message, type = 'disconnected') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = `📡 Status: ${message}`;
+            statusElement.className = `status ${type}`;
+        }
+
+        // Update connection timer
+        function updateConnectionTimer() {
+            if (client && client.connectionStartTime) {
+                const elapsed = Math.floor((Date.now() - client.connectionStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('connectionTime').textContent =
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+
+        // Start streaming (combines connect + start stream)
+        async function startStreaming() {
+            try {
+                const secretKey = document.getElementById('secretKey').value.trim();
+
+                if (!secretKey) {
+                    alert('Please enter your Secret Key');
+                    return;
+                }
+
+                updateStatus('Connecting...', 'connecting');
+                document.getElementById('startStreamBtn').disabled = true;
+
+                const wsUrl = "wss://developers.moveris.com/ws/live/v1/";
+                client = new VideoWebSocketClient(wsUrl, secretKey);
+
+                await client.connect();
+
+                // Start connection timer
+                connectionTimer = setInterval(updateConnectionTimer, 1000);
+
+            } catch (error) {
+                console.error('Failed to start streaming:', error);
+                client?.log(`❌ Failed to start streaming: ${error.message}`);
+                updateStatus('Failed to start streaming', 'disconnected');
+                document.getElementById('startStreamBtn').disabled = false;
+
+                if (client) {
+                    client.disconnect();
+                    client = null;
+                }
+            }
+        }
+
+        // Stop streaming (combines stop stream + disconnect)
+        function stopStreaming() {
+            if (client) {
+                client.disconnect();
+                client = null;
+            }
+
+            if (connectionTimer) {
+                clearInterval(connectionTimer);
+                connectionTimer = null;
+            }
+
+            updateStatus('Ready to start streaming', 'disconnected');
+        }
+
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            stopStreaming();
+        });
+
+        // Initialize
+        updateStatus('Ready to start streaming', 'disconnected');
+    </script>
+</body>
+</html>
