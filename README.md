@@ -1,3 +1,3 @@
 # Moveris Sample Code Library
 
-## Sample code and tutorials for Moveris APIs
+## Sample code and tutorials for Moveris Human Liveness Detection APIs
