@@ -1,0 +1,11 @@
+# Moveris Live Python Client Dependencies
+
+# WebSocket client
+websockets>=11.0.0
+
+# Computer vision and camera
+opencv-python>=4.8.0
+
+# Optional: For better logging
+colorama>=0.4.6
+

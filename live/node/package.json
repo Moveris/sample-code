@@ -1,0 +1,30 @@
+{
+  "name": "moveris-live-client",
+  "version": "1.0.0",
+  "description": "WebSocket client for streaming video to Moveris AI Detection API",
+  "main": "moveris_client.js",
+  "scripts": {
+    "start": "node moveris_client.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "moveris",
+    "websocket",
+    "video",
+    "streaming",
+    "ai",
+    "detection"
+  ],
+  "author": "Moveris",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/moveris-client"
+  }
+}
