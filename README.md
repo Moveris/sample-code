@@ -1,3 +1,3 @@
-# sample-code
+# Moveris Sample Code Library
 
-## Home of sample code and tutorials for Moveris APIs
+## Sample code and tutorials for Moveris APIs
