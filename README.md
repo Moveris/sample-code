@@ -106,17 +106,6 @@ const CONFIG = {
 
 **Production Warning:** Never hardcode API keys in frontend code. Use a backend proxy to authenticate with Moveris API. See `DEPLOYMENT.md` in each project for detailed security implementation.
 
-### Performance Tuning
-
-Adjust frame rate and quality based on your network and use case:
-
-| Use Case | Frame Rate | Quality | Bandwidth |
-|----------|-----------|---------|-----------|
-| Low bandwidth / Mobile | 5 FPS | 60% | ~500 Kbps |
-| Standard | 10 FPS | 70% | ~1 Mbps |
-| High quality | 15 FPS | 80% | ~2 Mbps |
-| Maximum accuracy | 20 FPS | 90% | ~3 Mbps |
-
 ### Build Commands
 
 ```bash
@@ -139,14 +128,6 @@ npm run lint
 - **ENVIRONMENT_SETUP.md** - Detailed configuration options
 - **DEPLOYMENT.md** - Production deployment with backend proxy
 - **CLIENT_DOCUMENTATION.md** - Complete API reference
-
-### Performance Metrics
-
-- **Setup Time:** 2-3 minutes
-- **Memory Usage:** 100-150 MB
-- **CPU Usage:** 10-20%
-- **Image Quality:** Excellent
-- **Best For:** Production web applications, user-facing authentication
 
 ---
 
@@ -222,14 +203,6 @@ const CONFIG = {
 - Real-time WebSocket communication
 - Visual progress indicators
 - Results display with confidence scores
-
-### Performance Metrics
-
-- **Setup Time:** Instant
-- **Memory Usage:** 50-80 MB
-- **CPU Usage:** 5-10%
-- **Image Quality:** Good
-- **Best For:** Quick testing, demos, legacy integration, learning
 
 ---
 
@@ -327,14 +300,6 @@ async def main():
 websockets>=10.0
 opencv-python>=4.5.0
 ```
-
-### Performance Metrics
-
-- **Setup Time:** 1 minute
-- **Memory Usage:** 40-60 MB
-- **CPU Usage:** 8-15%
-- **Image Quality:** Excellent
-- **Best For:** Automation scripts, server-side processing, batch operations
 
 ---
 
@@ -468,14 +433,6 @@ ws.on('message', (data) => {
   }
 });
 ```
-
-### Performance Metrics
-
-- **Setup Time:** 2 minutes
-- **Memory Usage:** 80-120 MB
-- **CPU Usage:** 10-18%
-- **Image Quality:** Excellent
-- **Best For:** Backend integration, server-side processing, enterprise applications
 
 ---
 
@@ -627,14 +584,6 @@ function sendFrame(frameData) {
   websocket.send(message);
 }
 ```
-
-### Performance Metrics
-
-- **Setup Time:** Instant
-- **Memory Usage:** 50-80 MB
-- **CPU Usage:** 5-10%
-- **Image Quality:** Good
-- **Best For:** Browser-based demos, client-side integration, prototyping
 
 ---
 
