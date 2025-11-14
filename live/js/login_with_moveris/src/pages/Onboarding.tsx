@@ -48,7 +48,7 @@ const steps: Step[] = [
 const Onboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(6);
+  const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState({
     cryptoKnowledge: "",
     tradingStyle: "",
@@ -96,9 +96,6 @@ const Onboarding = () => {
     }
   };
 
-  const handleSecretKey = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setToken(e.target.value)
-  };
 
 
 
@@ -201,7 +198,7 @@ const Onboarding = () => {
             if (websocket.readyState === WebSocket.OPEN) {
               websocket.send(JSON.stringify({
                 type: 'auth',
-                token: token
+                token: CONFIG.MOVERIS_SECRET_KEY
               }));
 
             }
@@ -458,14 +455,6 @@ const Onboarding = () => {
                   File: {formData.document.name}
                 </p>
               )}
-
-              <Input
-                id="secret"
-                type="text"
-                onChange={handleSecretKey}
-                className="flex-1"
-                placeholder="Enter secret key"
-              />
             </div>
 
             {formData.document && !isVerified && (
