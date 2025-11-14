@@ -24,15 +24,20 @@ Follow these steps:
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone git@github.com:Moveris/sample-code.git
+# in case your using HTTPS
+git clone https://github.com/Moveris/sample-code.git
 
 # Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+cd sample-code/live/js/login_with_moveris
 
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4 : Add your env in hear and look on .env.examples for env examples.
+touch .env 
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
@@ -59,6 +64,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- WebSocket as server
 
 ## How can I deploy this project?
 
