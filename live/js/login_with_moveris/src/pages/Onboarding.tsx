@@ -8,6 +8,27 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Upload, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { WebcamCapture } from "@/components/WebcamCapture";
+import { interval } from "date-fns";
+
+
+
+
+// ============================================================================
+// CONFIGURATION - Loaded from environment variables
+// ============================================================================
+const CONFIG = {
+  // Moveris API Configuration
+  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://developers.moveris.com/ws/live/v1/",
+  MOVERIS_SECRET_KEY: import.meta.env.VITE_MOVERIS_SECRET_KEY || "",
+
+  // Frame Capture Settings
+  FRAME_RATE: parseInt(import.meta.env.VITE_FRAME_RATE) || 10,
+  IMAGE_QUALITY: parseFloat(import.meta.env.VITE_IMAGE_QUALITY) || 0.7,
+  MAX_REQUIRED_FRAMES: parseInt(import.meta.env.VITE_REQUIRED_FRAMES) || 500,
+
+};
+
+
 
 type Step = {
   id: number;
@@ -28,7 +49,7 @@ const steps: Step[] = [
 const Onboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(6);
   const [formData, setFormData] = useState({
     cryptoKnowledge: "",
     tradingStyle: "",
@@ -41,6 +62,17 @@ const Onboarding = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [showWebcam, setShowWebcam] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [error, setError] = useState<string>("");
+  const [token, setToken] = useState<string>("");
+
+  // ============================================================================
+  // REFS
+  // ============================================================================
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const frameCountRef = useRef<number>(0);
+
 
   useEffect(() => {
     // Request webcam access after component mounts
@@ -65,66 +97,215 @@ const Onboarding = () => {
     }
   };
 
-  const handleVerification = async (frame: string) => {
-    setIsVerifying(true);
-    
+  const handleSecretKey = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setToken(e.target.value)
+  };
+
+
+
+  // ============================================================================
+  // Web Cam initialization 
+  // =============================================================================
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480 },
+        audio: false,
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error("Error accessing camera:", err);
+      setError("Unable to access camera. Please grant camera permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        track.stop()
+      }
+      setStream(null);
+    }
+  };
+
+  useEffect(() => {
+    startCamera();
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+
+
+  // ============================================================================
+  // MOVERIS WEBSOCKET INTEGRATION (Based on provided HTML logic)
+  // ============================================================================
+
+  /**
+ * Captures a frame from the video stream
+ * Converts to base64 JPEG format for transmission
+ */
+  const captureFrame = () => {
+    if (!videoRef.current || !canvasRef.current) return null;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+
+    // Draw current video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert to base64 JPEG
+    const dataUrl = canvas.toDataURL('image/jpeg', CONFIG.IMAGE_QUALITY);
+    const base64Data = dataUrl.split(',')[1];
+
+    return base64Data;
+  };
+
+
+
+  const handleVerification = async () => {
+
+
+
     // Simulate WebSocket connection to external verification service
     // In production, replace this with actual WebSocket connection
+
     try {
-      // Simulating verification
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate random verification result (replace with actual WebSocket response)
-      const isReal = Math.random() > 0.2; // 80% success rate for demo
-      
-      if (isReal) {
-        setIsVerified(true);
-        toast({
-          title: "Verification Successful",
-          description: "Your identity has been verified",
-        });
-        setTimeout(() => {
-          navigate("/payment");
-        }, 1500);
-      } else {
+
+
+
+      /**  
+       * Initializes WebSocket connection to Moveris API
+       * Handles authentication and frame streaming    
+      **/
+
+      const websocket = new WebSocket(CONFIG.MOVERIS_WS_URI);
+      websocket.onopen = () => {
+        console.log('WebSocket connected');
+      };
+      let intervalId;
+      console.log("token", token);
+
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if ("auth_required" === data.type) {
+            console.log('Authentication required');
+            if (websocket.readyState === WebSocket.OPEN) {
+              websocket.send(JSON.stringify({
+                type: 'auth',
+                token: token
+              }));
+
+            }
+          }
+          if ("auth_success" === data.type) {
+
+            intervalId = setInterval(() => {
+              const frameData = captureFrame();
+
+              if (websocket.readyState === WebSocket.OPEN) {
+
+                frameCountRef.current += 1;
+                const currentFrame = frameCountRef.current;
+
+                websocket.send(JSON.stringify({
+                  type: 'frame',
+                  frame_number: currentFrame,
+                  frame_data: frameData,
+                  timestamp: Date.now() / 1000
+                }));
+              }
+            }, 1000 / CONFIG.FRAME_RATE);
+          }
+          if ("processing_complete" === data.type) {
+            setIsVerified(true);
+            toast({
+              title: "Verification Successful",
+              description: "Your identity has been verified",
+            });
+            clearInterval(intervalId);
+            stopCamera()
+            setIsVerifying(false);
+            setTimeout(() => navigate("/payment"), 2500)
+
+          }
+          if ("error" === data.type) {
+            clearInterval(intervalId);
+            stopCamera()
+            toast({
+              title: "Verification Failed",
+              description: "Please try again or contact support",
+              variant: "destructive",
+            });
+            navigate("/error");
+          }
+
+        } catch (error) {
+          // throw new Error("WebSocket error occurred (onmessage):" + JSON.stringify(error));
+          toast({
+            title: "Verification Failed",
+            description: "Please try again or contact support",
+            variant: "destructive",
+          });
+          console.error("WebSocket error occurred (onmessage):", error)
+          setIsVerifying(false);
+        }
+      }
+
+      websocket.onerror = (err) => {
+        // throw new Error("WebSocket error occurred:" + JSON.stringify(err));
         toast({
           title: "Verification Failed",
           description: "Please try again or contact support",
           variant: "destructive",
         });
-        navigate("/error");
-      }
+        console.error("WebSocket error occurred (onerror):", err)
+        setIsVerifying(false);
+      };
+
+
     } catch (error) {
       toast({
         title: "Verification Error",
         description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
-    } finally {
+      console.error("WebSocket error occurred (initailization):", error);
       setIsVerifying(false);
-    }
+
+    } 
   };
+
 
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
         return (
           <div className="grid gap-3">
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.cryptoKnowledge === 'basic' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, cryptoKnowledge: 'basic' })}
             >
               <h3 className="font-semibold mb-1">Basic</h3>
               <p className="text-sm text-muted-foreground">Just getting started with cryptocurrency trading</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.cryptoKnowledge === 'intermediate' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, cryptoKnowledge: 'intermediate' })}
             >
               <h3 className="font-semibold mb-1">Intermediate</h3>
               <p className="text-sm text-muted-foreground">Have some experience trading and understanding markets</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.cryptoKnowledge === 'expert' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, cryptoKnowledge: 'expert' })}
             >
@@ -136,21 +317,21 @@ const Onboarding = () => {
       case 1:
         return (
           <div className="grid gap-3">
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingStyle === 'day' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingStyle: 'day' })}
             >
               <h3 className="font-semibold mb-1">Day Trading</h3>
               <p className="text-sm text-muted-foreground">Active trading with positions closed within the same day</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingStyle === 'swing' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingStyle: 'swing' })}
             >
               <h3 className="font-semibold mb-1">Swing Trading</h3>
               <p className="text-sm text-muted-foreground">Hold positions for days or weeks to capture market swings</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingStyle === 'long-term' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingStyle: 'long-term' })}
             >
@@ -162,21 +343,21 @@ const Onboarding = () => {
       case 2:
         return (
           <div className="grid gap-3">
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.riskProfile === 'conservative' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, riskProfile: 'conservative' })}
             >
               <h3 className="font-semibold mb-1">Conservative</h3>
               <p className="text-sm text-muted-foreground">Minimize risk with stable, low-volatility investments</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.riskProfile === 'moderate' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, riskProfile: 'moderate' })}
             >
               <h3 className="font-semibold mb-1">Moderate</h3>
               <p className="text-sm text-muted-foreground">Balanced approach between risk and reward</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.riskProfile === 'aggressive' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, riskProfile: 'aggressive' })}
             >
@@ -188,21 +369,21 @@ const Onboarding = () => {
       case 3:
         return (
           <div className="grid gap-3">
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.primaryObjective === 'income' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, primaryObjective: 'income' })}
             >
               <h3 className="font-semibold mb-1">Generate Income</h3>
               <p className="text-sm text-muted-foreground">Focus on regular returns through dividends and interest</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.primaryObjective === 'growth' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, primaryObjective: 'growth' })}
             >
               <h3 className="font-semibold mb-1">Capital Growth</h3>
               <p className="text-sm text-muted-foreground">Maximize long-term portfolio value appreciation</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.primaryObjective === 'preservation' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, primaryObjective: 'preservation' })}
             >
@@ -214,28 +395,28 @@ const Onboarding = () => {
       case 4:
         return (
           <div className="grid gap-3">
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingFrequency === 'daily' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingFrequency: 'daily' })}
             >
               <h3 className="font-semibold mb-1">Daily</h3>
               <p className="text-sm text-muted-foreground">Execute trades every day during market hours</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingFrequency === 'weekly' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingFrequency: 'weekly' })}
             >
               <h3 className="font-semibold mb-1">Weekly</h3>
               <p className="text-sm text-muted-foreground">Trade a few times per week as opportunities arise</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingFrequency === 'monthly' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingFrequency: 'monthly' })}
             >
               <h3 className="font-semibold mb-1">Monthly</h3>
               <p className="text-sm text-muted-foreground">Make strategic trades once or twice a month</p>
             </Card>
-            <Card 
+            <Card
               className={`p-4 cursor-pointer transition-all ${formData.tradingFrequency === 'occasionally' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}
               onClick={() => setFormData({ ...formData, tradingFrequency: 'occasionally' })}
             >
@@ -278,10 +459,23 @@ const Onboarding = () => {
                   File: {formData.document.name}
                 </p>
               )}
+
+              <Input
+                id="secret"
+                type="text"
+                onChange={handleSecretKey}
+                className="flex-1"
+                placeholder="Enter secret key"
+              />
             </div>
-            
+
             {formData.document && !isVerified && (
-              <Button onClick={() => handleVerification("")} disabled={isVerifying} className="w-full">
+              <Button onClick={() => {
+                setIsVerifying(true);
+                setTimeout(() => handleVerification()
+                  , 2000)
+              }}
+                disabled={isVerifying} className="w-full">
                 {isVerifying ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -327,19 +521,17 @@ const Onboarding = () => {
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div
-                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    index <= currentStep
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  }`}
+                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${index <= currentStep
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                    }`}
                 >
                   {index + 1}
                 </div>
                 {index < steps.length - 1 && (
                   <div
-                    className={`h-1 w-8 mx-1 ${
-                      index < currentStep ? "bg-primary" : "bg-muted"
-                    }`}
+                    className={`h-1 w-8 mx-1 ${index < currentStep ? "bg-primary" : "bg-muted"
+                      }`}
                   />
                 )}
               </div>
@@ -380,12 +572,30 @@ const Onboarding = () => {
 
         {showWebcam && (
           <div className="fixed bottom-4 right-4">
-            <WebcamCapture
-              onCapture={handleVerification}
-              isVerifying={isVerifying}
-              isVerified={isVerified}
-              thumbnailOnly
-            />
+
+            <Card className={`p-2 w-48 transition-opacity duration-1000 ${isVerified && !stream ? 'opacity-0' : 'opacity-100'}`}>
+              <div className="relative">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-32 object-cover rounded-md"
+                />
+                <canvas ref={canvasRef} className="hidden" />
+                {isVerified && (
+                  <div className="absolute inset-0 bg-success/20 flex items-center justify-center rounded-md backdrop-blur-sm">
+                    <CheckCircle2 className="h-12 w-12 text-success drop-shadow-lg" />
+                  </div>
+                )}
+                {error && (
+                  <div className="text-xs text-destructive mt-1">{error}</div>
+                )}
+              </div>
+              <p className="text-xs text-center text-muted-foreground mt-2">
+                {isVerified ? "Verified ✓" : "Live Camera Feed"}
+              </p>
+            </Card>
           </div>
         )}
       </div>
