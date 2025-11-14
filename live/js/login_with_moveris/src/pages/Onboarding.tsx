@@ -17,7 +17,7 @@ import { WebcamCapture } from "@/components/WebcamCapture";
 // ============================================================================
 const CONFIG = {
   // Moveris API Configuration
-  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://developers.moveris.com/ws/live/v1/",
+  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://api.moveris.com/live/v1/",
   MOVERIS_SECRET_KEY: import.meta.env.VITE_MOVERIS_SECRET_KEY || "",
 
   // Frame Capture Settings
