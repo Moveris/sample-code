@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Upload, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { WebcamCapture } from "@/components/WebcamCapture";
-import { interval } from "date-fns";
 
 
 
