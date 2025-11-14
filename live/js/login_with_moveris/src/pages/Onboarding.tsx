@@ -517,10 +517,17 @@ const Onboarding = () => {
                   {index + 1}
                 </div>
                 {index < steps.length - 1 && (
-                  <div
-                    className={`h-1 w-8 mx-1 ${index < currentStep ? "bg-primary" : "bg-muted"
-                      }`}
-                  />
+                  <div className="relative flex items-center mx-2">
+                    <div
+                      className={`h-1 w-16 ${index < currentStep ? "bg-primary" : "bg-muted"}`}
+                    />
+
+                    {/* Arrow */}
+                    <div
+                      className={`w-3 h-3 border-t-8 border-b-8 ml-[1px]  border-white
+                      ${index < currentStep ? "border-l-8 border-l-primary" : "border-l-8 border-l-muted"}`}
+                    />
+                  </div>
                 )}
               </div>
             ))}
@@ -559,9 +566,9 @@ const Onboarding = () => {
         </Card>
 
         {showWebcam && (
-          <div className="fixed bottom-4 right-4">
+          <div className="fixed bottom-4 left-4">
 
-            <Card className={`p-2 w-48 transition-opacity duration-1000 ${isVerified && !stream ? 'opacity-0' : 'opacity-100'}`}>
+            <Card className={`p-2 w-48 transition-opacity duration-5000 ${isVerified && !stream ? 'opacity-0' : 'opacity-100'}`}>
               <div className="relative">
                 <video
                   ref={videoRef}
