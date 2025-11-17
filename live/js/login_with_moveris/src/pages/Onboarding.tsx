@@ -2,15 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Upload, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { WebcamCapture } from "@/components/WebcamCapture";
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -19,8 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-
 
 // ============================================================================
 // CONFIGURATION - Loaded from environment variables
@@ -36,8 +31,6 @@ const CONFIG = {
   MAX_REQUIRED_FRAMES: parseInt(import.meta.env.VITE_REQUIRED_FRAMES) || 500,
 
 };
-
-
 
 type Step = {
   id: number;
@@ -85,8 +78,6 @@ const Onboarding = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameCountRef = useRef<number>(0);
 
-
-
   useEffect(() => {
     // Request webcam access after component mounts
     setShowWebcam(true);
@@ -111,9 +102,6 @@ const Onboarding = () => {
       setFormData({ ...formData, document: e.target.files[0] });
     }
   };
-
-
-
 
   // ============================================================================
   // Web Cam initialization 
@@ -162,13 +150,9 @@ const Onboarding = () => {
     }
   };
 
-
-
-
   // ============================================================================
   // MOVERIS WEBSOCKET INTEGRATION (Based on provided HTML logic)
   // ============================================================================
-
   /**
  * Captures a frame from the video stream
  * Converts to base64 JPEG format for transmission
@@ -179,14 +163,11 @@ const Onboarding = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
-
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
-
     // Draw current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
     // Convert to base64 JPEG
     const dataUrl = canvas.toDataURL('image/jpeg', CONFIG.IMAGE_QUALITY);
     const base64Data = dataUrl.split(',')[1];
@@ -194,24 +175,15 @@ const Onboarding = () => {
     return base64Data;
   };
 
-
-
   const handleVerification = async () => {
-
-
-
     // Simulate WebSocket connection to external verification service
     // In production, replace this with actual WebSocket connection
 
     try {
-
-
-
       /**  
        * Initializes WebSocket connection to Moveris API
        * Handles authentication and frame streaming    
       **/
-
       const websocket = new WebSocket(CONFIG.MOVERIS_WS_URI);
       websocket.onopen = () => {
         console.log('WebSocket connected');
@@ -232,7 +204,6 @@ const Onboarding = () => {
             }
           }
           if ("auth_success" === data.type) {
-
             intervalId = setInterval(() => {
               const frameData = captureFrame();
 
@@ -284,7 +255,6 @@ const Onboarding = () => {
           setIsVerifying(false);
         }
       }
-
       websocket.onerror = (err) => {
         // throw new Error("WebSocket error occurred:" + JSON.stringify(err));
         toast({
@@ -295,8 +265,6 @@ const Onboarding = () => {
         console.error("WebSocket error occurred (onerror):", err)
         setIsVerifying(false);
       };
-
-
     } catch (error) {
       toast({
         title: "Verification Error",
@@ -309,6 +277,11 @@ const Onboarding = () => {
     }
   };
 
+  const startVeriFicationClick = () => {
+    setIsVerifying(true);
+    setTimeout(() => handleVerification()
+      , 2000)
+  }
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -466,12 +439,7 @@ const Onboarding = () => {
       case 6:
         return (
           <div className="space-y-6">
-            <Button onClick={() => {
-              setIsVerifying(true);
-              setTimeout(() => handleVerification()
-                , 2000)
-            }}
-              disabled={isVerifying} className="w-full">
+            <Button onClick={startVeriFicationClick} disabled={isVerifying} className="w-full">
               {isVerifying ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -510,7 +478,6 @@ const Onboarding = () => {
           </div>
           <span className="text-2xl font-bold">Traiders</span>
         </div>
-
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             {steps.map((step, index) => (
@@ -533,7 +500,6 @@ const Onboarding = () => {
             ))}
           </div>
         </div>
-
         <Card>
           <CardHeader>
             <CardTitle>{steps[currentStep].title}</CardTitle>
@@ -541,7 +507,6 @@ const Onboarding = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             {renderStepContent()}
-
             <div className="flex justify-between pt-6">
               <Button
                 variant="outline"
@@ -560,7 +525,6 @@ const Onboarding = () => {
             </div>
           </CardContent>
         </Card>
-
         {showWebcam && (
           <div className="fixed bottom-4 right-4">
 
@@ -589,14 +553,16 @@ const Onboarding = () => {
             </Card>
           </div>
         )}
-
+        {/* Popups  */}
+        {/* camera required popup  */}
         <AlertDialog open={camAllowPopup} onOpenChange={setCamAllowPopup}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Camera Access Required</AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogDescription>
-              Traiders needs permission to use your camera for a quick identity check.
+              Hey! Traiders needs to turn on your webcam just for a quick human check.
+              It’ll only take a moment, and your camera feed stays private.
             </AlertDialogDescription>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setCamCancelPopup(true)}>Cancel</AlertDialogCancel>
@@ -604,8 +570,7 @@ const Onboarding = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-
+        {/* camera blocked popup  */}
         <AlertDialog open={camCancelPopup} onOpenChange={setCamCancelPopup}>
           <AlertDialogContent>
             <AlertDialogHeader>
