@@ -8,7 +8,17 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Upload, CheckCircle2, TrendingUp, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { WebcamCapture } from "@/components/WebcamCapture";
-
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 
@@ -63,7 +73,10 @@ const Onboarding = () => {
   const [showWebcam, setShowWebcam] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string>("");
-  const [token, setToken] = useState<string>("");
+  const [camAllowPopup, setCamAllowPopup] = useState<boolean>(true);
+  const [isCamAllowed, setIsCamAllowed] = useState<boolean>(false);
+  const [camCancelPopup, setCamCancelPopup] = useState<boolean>(false);
+  const [camBlockedUserStatusMessage, setCamBlockedUserStatusMessage] = useState<string>("")
 
   // ============================================================================
   // REFS
@@ -73,10 +86,13 @@ const Onboarding = () => {
   const frameCountRef = useRef<number>(0);
 
 
+
   useEffect(() => {
     // Request webcam access after component mounts
     setShowWebcam(true);
   }, []);
+
+
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -109,12 +125,31 @@ const Onboarding = () => {
         audio: false,
       });
       setStream(mediaStream);
+      setIsCamAllowed(true);
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err) {
+      if (!(err instanceof Error)) {
+        err = new Error(err);
+      }
+      if ("NotAllowedError" === err.name) {
+        const status = await navigator.permissions.query({ name: "camera" });
+
+        if ("prompt" === status.state) {
+          setCamBlockedUserStatusMessage("This app needs access to your camera. Please refresh your Browser or  allow camera accessto continue.Go to Settings>Privacy & Security> Permissions or Site settings to enable camera access.");
+        }
+        if ("denied" === status.state) {
+          setCamBlockedUserStatusMessage("Camera access has been denied. Please enable camera permissions manually in your browser or device settings to continue. Go to Settings>Privacy & Security> Permissions or Site settings to enable camera access.");
+        }
+      }
+      setIsCamAllowed(false);
+      setCamCancelPopup(true);
+
       console.error("Error accessing camera:", err);
       setError("Unable to access camera. Please grant camera permissions.");
+
     }
   };
 
@@ -127,12 +162,6 @@ const Onboarding = () => {
     }
   };
 
-  useEffect(() => {
-    startCamera();
-    return () => {
-      stopCamera();
-    };
-  }, []);
 
 
 
@@ -188,7 +217,6 @@ const Onboarding = () => {
         console.log('WebSocket connected');
       };
       let intervalId;
-      console.log("token", token);
 
       websocket.onmessage = (event) => {
         try {
@@ -278,7 +306,7 @@ const Onboarding = () => {
       console.error("WebSocket error occurred (initailization):", error);
       setIsVerifying(false);
 
-    } 
+    }
   };
 
 
@@ -438,42 +466,21 @@ const Onboarding = () => {
       case 6:
         return (
           <div className="space-y-6">
-            <div className="space-y-4">
-              <Label htmlFor="document">Upload Identity Document</Label>
-              <div className="flex items-center gap-4">
-                <Input
-                  id="document"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleDocumentUpload}
-                  className="flex-1"
-                />
-                {formData.document && <CheckCircle2 className="h-5 w-5 text-success" />}
-              </div>
-              {formData.document && (
-                <p className="text-sm text-muted-foreground">
-                  File: {formData.document.name}
-                </p>
+            <Button onClick={() => {
+              setIsVerifying(true);
+              setTimeout(() => handleVerification()
+                , 2000)
+            }}
+              disabled={isVerifying} className="w-full">
+              {isVerifying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Start Verification"
               )}
-            </div>
-
-            {formData.document && !isVerified && (
-              <Button onClick={() => {
-                setIsVerifying(true);
-                setTimeout(() => handleVerification()
-                  , 2000)
-              }}
-                disabled={isVerifying} className="w-full">
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Start Verification"
-                )}
-              </Button>
-            )}
+            </Button>
           </div>
         );
       default:
@@ -545,15 +552,11 @@ const Onboarding = () => {
                 Previous
               </Button>
               {currentStep < steps.length - 1 ? (
-                <Button onClick={handleNext} disabled={!isStepValid()}>
+                <Button onClick={handleNext} disabled={(!isStepValid() || !isCamAllowed)}>
                   Next
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  {!isVerified && "Upload document and verify to continue"}
-                </div>
-              )}
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -586,6 +589,37 @@ const Onboarding = () => {
             </Card>
           </div>
         )}
+
+        <AlertDialog open={camAllowPopup} onOpenChange={setCamAllowPopup}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Camera Access Required</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription>
+              Traiders needs permission to use your camera for a quick identity check.
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setCamCancelPopup(true)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={startCamera}>Allow Camera</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+
+        <AlertDialog open={camCancelPopup} onOpenChange={setCamCancelPopup}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Camera Access Required*</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription>
+              {camBlockedUserStatusMessage !== "" ? camBlockedUserStatusMessage : "This Identity verification service available only with Camera access"}
+            </AlertDialogDescription>
+            <AlertDialogFooter>
+              {camBlockedUserStatusMessage === "" &&
+                <AlertDialogAction onClick={startCamera}>Allow Camera</AlertDialogAction>}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
