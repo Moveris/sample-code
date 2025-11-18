@@ -69,7 +69,9 @@ const Onboarding = () => {
   const [camAllowPopup, setCamAllowPopup] = useState<boolean>(true);
   const [isCamAllowed, setIsCamAllowed] = useState<boolean>(false);
   const [camCancelPopup, setCamCancelPopup] = useState<boolean>(false);
-  const [camBlockedUserStatusMessage, setCamBlockedUserStatusMessage] = useState<string>("")
+  const [camBlockedUserStatusMessage, setCamBlockedUserStatusMessage] = useState<string>("");
+  const [processCompleted, setProcessComplted] = useState<boolean>(false);
+  const [webSocketError, setWebSocketError] = useState<boolean>(false);
 
   // ============================================================================
   // REFS
@@ -77,13 +79,13 @@ const Onboarding = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameCountRef = useRef<number>(0);
+  const websocketRef = useRef<WebSocket | null>(null);
+  const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Request webcam access after component mounts
     setShowWebcam(true);
   }, []);
-
-
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -94,12 +96,6 @@ const Onboarding = () => {
   const handlePrevious = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, document: e.target.files[0] });
     }
   };
 
@@ -154,10 +150,10 @@ const Onboarding = () => {
   // MOVERIS WEBSOCKET INTEGRATION (Based on provided HTML logic)
   // ============================================================================
   /**
- * Captures a frame from the video stream
- * Converts to base64 JPEG format for transmission
- */
-  const captureFrame = () => {
+   * Captures a frame from the video stream
+   * Converts to base64 JPEG format for transmission
+  **/
+  const captureFrame = (): string => {
     if (!videoRef.current || !canvasRef.current) return null;
 
     const video = videoRef.current;
@@ -175,112 +171,145 @@ const Onboarding = () => {
     return base64Data;
   };
 
-  const handleVerification = async () => {
-    // Simulate WebSocket connection to external verification service
-    // In production, replace this with actual WebSocket connection
+  useEffect(() => {
+    if (!captureFrame) return; // Wait until captureFrame is ready
 
+    if (isCamAllowed && videoRef.current && canvasRef.current) {
+
+      initializeWebSocket();
+    }
+    // // Cleanup function for socket and timers
+    return () => {
+
+      if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
+        websocketRef.current.close();
+        console.log("WebSocket closed");
+      }
+    };
+
+
+  }, [videoRef.current, canvasRef.current, isCamAllowed]);
+
+  // To fix issue  4 levels of problem 
+  const sendFrame = () => {
+    if (websocketRef.current?.readyState !== WebSocket.OPEN) return;
+
+    const frameData = captureFrame();
+    frameCountRef.current += 1;
+    const currentFrame = frameCountRef.current;
+
+    websocketRef.current?.send(JSON.stringify({
+      type: 'frame',
+      frame_number: currentFrame,
+      frame_data: frameData,
+      timestamp: Date.now() / 1000,
+    }));
+
+    // Disconnect when max frames reached
+    // if (currentFrame >= CONFIG.MAX_REQUIRED_FRAMES) {
+    //   clearInterval(intervalIdRef.current);    
+    //   console.log("Max frames reached, WebSocket disconnected.");
+    // }
+  };
+
+  /**
+   * Initializes WebSocket connection to Moveris API
+   * Handles authentication and frame streaming    
+  **/
+  const initializeWebSocket = async () => {
     try {
-      /**  
-       * Initializes WebSocket connection to Moveris API
-       * Handles authentication and frame streaming    
-      **/
-      const websocket = new WebSocket(CONFIG.MOVERIS_WS_URI);
-      websocket.onopen = () => {
-        console.log('WebSocket connected');
-      };
-      let intervalId;
+      websocketRef.current = new WebSocket(CONFIG.MOVERIS_WS_URI);
 
-      websocket.onmessage = (event) => {
+      websocketRef.current.onopen = () => {
+        console.log('WebSocket connected');
+        websocketRef.current.send(JSON.stringify({
+          type: 'auth',
+          token: CONFIG.MOVERIS_SECRET_KEY
+        }));
+      };
+
+      websocketRef.current.onmessage = (event: MessageEvent): void => {
         try {
           const data = JSON.parse(event.data);
-          if ("auth_required" === data.type) {
-            console.log('Authentication required');
-            if (websocket.readyState === WebSocket.OPEN) {
-              websocket.send(JSON.stringify({
-                type: 'auth',
-                token: CONFIG.MOVERIS_SECRET_KEY
-              }));
 
-            }
-          }
           if ("auth_success" === data.type) {
-            intervalId = setInterval(() => {
-              const frameData = captureFrame();
-
-              if (websocket.readyState === WebSocket.OPEN) {
-
-                frameCountRef.current += 1;
-                const currentFrame = frameCountRef.current;
-
-                websocket.send(JSON.stringify({
-                  type: 'frame',
-                  frame_number: currentFrame,
-                  frame_data: frameData,
-                  timestamp: Date.now() / 1000
-                }));
-              }
-            }, 1000 / CONFIG.FRAME_RATE);
+            console.log('Sending frames started');
+            intervalIdRef.current = setInterval(sendFrame, 1000 / CONFIG.FRAME_RATE);
           }
+
+          if ("processing_started" === data.type) {
+            console.log('Process started');
+            clearInterval(intervalIdRef.current);
+          }
+
           if ("processing_complete" === data.type) {
+            console.log('Process completed');
+            clearInterval(intervalIdRef.current);
+            stopCamera();
+            setProcessComplted(true);
             setIsVerified(true);
-            toast({
-              title: "Verification Successful",
-              description: "Your identity has been verified",
-            });
-            clearInterval(intervalId);
-            stopCamera()
             setIsVerifying(false);
-            setTimeout(() => navigate("/payment"), 2500)
+            setWebSocketError(false);
 
           }
+
           if ("error" === data.type) {
-            clearInterval(intervalId);
-            stopCamera()
-            toast({
-              title: "Verification Failed",
-              description: "Please try again or contact support",
-              variant: "destructive",
-            });
-            navigate("/error");
+            console.log('Server errorr disconnecting!:', data);
+            setProcessComplted(false);
+            setWebSocketError(true);
+            clearInterval(intervalIdRef.current);
+            stopCamera();
+
           }
 
+          if ("disconnect" === data.type) {
+            setProcessComplted(false);
+            setWebSocketError(true);
+            clearInterval(intervalIdRef.current);
+            stopCamera();
+          }
         } catch (error) {
-          // throw new Error("WebSocket error occurred (onmessage):" + JSON.stringify(error));
+          setIsVerifying(false);
+          setWebSocketError(true);
+          console.error("WebSocket error occurred (onmessage):", error);
           toast({
             title: "Verification Failed",
             description: "Please try again or contact support",
             variant: "destructive",
           });
-          console.error("WebSocket error occurred (onmessage):", error)
-          setIsVerifying(false);
         }
-      }
-      websocket.onerror = (err) => {
-        // throw new Error("WebSocket error occurred:" + JSON.stringify(err));
-        toast({
-          title: "Verification Failed",
-          description: "Please try again or contact support",
-          variant: "destructive",
-        });
-        console.error("WebSocket error occurred (onerror):", err)
+      };
+
+      websocketRef.current.onerror = (err: Event): void => {
+        setWebSocketError(true);
         setIsVerifying(false);
+        clearInterval(intervalIdRef.current);
+        console.error("WebSocket error occurred (onerror):", err);
+
       };
     } catch (error) {
-      toast({
-        title: "Verification Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-      console.error("WebSocket error occurred (initailization):", error);
+      setWebSocketError(true);
       setIsVerifying(false);
-
+      console.error("WebSocket initialization error:", error);
+      clearInterval(intervalIdRef.current);
     }
+  };
+
+
+  const handleVerification = async () => {
+    if (processCompleted) {
+      navigate("/payment");
+      return;
+    }
+    if (webSocketError) {
+      navigate("/error");
+    }
+
   };
 
   const startVeriFicationClick = () => {
     setIsVerifying(true);
-    setTimeout(() => handleVerification()
-      , 2000)
+    setTimeout(() => handleVerification(), 2000)
   }
 
   const renderStepContent = () => {
