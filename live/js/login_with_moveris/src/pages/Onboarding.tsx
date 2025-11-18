@@ -72,6 +72,7 @@ const Onboarding = () => {
   const [camBlockedUserStatusMessage, setCamBlockedUserStatusMessage] = useState<string>("");
   const [processCompleted, setProcessComplted] = useState<boolean>(false);
   const [webSocketError, setWebSocketError] = useState<boolean>(false);
+  const [resultObj, setResultObj] = useState<unknown>(null);
 
   // ============================================================================
   // REFS
@@ -81,6 +82,8 @@ const Onboarding = () => {
   const frameCountRef = useRef<number>(0);
   const websocketRef = useRef<WebSocket | null>(null);
   const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isVerifyingRef = useRef<boolean>(false);
+
 
   useEffect(() => {
     // Request webcam access after component mounts
@@ -242,15 +245,23 @@ const Onboarding = () => {
             clearInterval(intervalIdRef.current);
           }
 
-          if ("processing_complete" === data.type) {
+          if ("processing_complete" === data.type) {            
+            if (isVerifyingRef.current && data?.result) {
+              if ("Real" === data?.result?.prediction) {
+                setIsVerified(true);
+                navigate("/payment");
+              } else {
+                navigate("/error");
+              }
+            }
+            console.log("process", data);
+            setResultObj(data.result)
             console.log('Process completed');
             clearInterval(intervalIdRef.current);
             stopCamera();
             setProcessComplted(true);
-            setIsVerified(true);
             setIsVerifying(false);
             setWebSocketError(false);
-
           }
 
           if ("error" === data.type) {
@@ -296,20 +307,22 @@ const Onboarding = () => {
   };
 
 
-  const handleVerification = async () => {
-    if (processCompleted) {
-      navigate("/payment");
-      return;
+  const startVeriFicationClick = () => {
+    setIsVerifying(true);
+    isVerifyingRef.current=true;
+    if (processCompleted && resultObj) {
+      if ("Real" === resultObj) {
+        setIsVerified(true);
+        navigate("/payment");
+
+      } else {
+        navigate("/error");
+      }
     }
     if (webSocketError) {
       navigate("/error");
     }
-
-  };
-
-  const startVeriFicationClick = () => {
-    setIsVerifying(true);
-    setTimeout(() => handleVerification(), 2000)
+    
   }
 
   const renderStepContent = () => {
