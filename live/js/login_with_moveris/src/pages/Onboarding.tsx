@@ -45,7 +45,7 @@ const steps: Step[] = [
   { id: 4, title: "Primary Objective", description: "What's your main goal?" },
   { id: 5, title: "Trading Frequency", description: "How often will you trade?" },
   { id: 6, title: "Investment Amount", description: "How much will you invest?" },
-  { id: 7, title: "Finish Verification", description: "" },
+  { id: 7, title: "Finish Verification", description: "Click the finish button to complete the process." },
 ];
 
 const Onboarding = () => {
@@ -555,20 +555,13 @@ const Onboarding = () => {
           </div>
         </div>
             <Card>
-        {loaderDelay ?
-          <Loader2 className="h-24 w-24 animate-spin text-green-500 mx-auto"/>
-          : (
-            <>
             <CardHeader>
               <CardTitle>{steps[currentStep].title}</CardTitle>
               <CardDescription>{steps[currentStep].description}</CardDescription>
             </CardHeader>
-          
             <CardContent className="space-y-6">
               {renderStepContent()}
             </CardContent>
-            </>
-                )}
              <CardContent className="space-y-6">
               <div className="flex justify-between pt-6">
                 <Button
@@ -581,6 +574,7 @@ const Onboarding = () => {
                 </Button>
                 {currentStep < steps.length - 1 ? (
                   <Button onClick={handleNext} disabled={(!isStepValid() || !isCamAllowed)}>
+                    {loaderDelay ? <Loader2 className="h-4 w-4 animate-spin text-white mx-auto"/> : ''}
                     Next
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
