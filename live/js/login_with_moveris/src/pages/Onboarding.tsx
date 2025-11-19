@@ -45,7 +45,7 @@ const steps: Step[] = [
   { id: 4, title: "Primary Objective", description: "What's your main goal?" },
   { id: 5, title: "Trading Frequency", description: "How often will you trade?" },
   { id: 6, title: "Investment Amount", description: "How much will you invest?" },
-  { id: 7, title: "Identity Verification", description: "Verify your identity" },
+  { id: 7, title: "Finish Verification", description: "" },
 ];
 
 const Onboarding = () => {
@@ -73,6 +73,7 @@ const Onboarding = () => {
   const [processCompleted, setProcessComplted] = useState<boolean>(false);
   const [webSocketError, setWebSocketError] = useState<boolean>(false);
   const [resultObj, setResultObj] = useState<unknown>(null);
+  const [loaderDelay, setLoaderDelay] = useState<boolean>(false);
 
   // ============================================================================
   // REFS
@@ -91,9 +92,13 @@ const Onboarding = () => {
   }, []);
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
+    setLoaderDelay(true);
+    setTimeout(()=>{
+      if (currentStep < steps.length - 1) {
+        setCurrentStep(currentStep + 1);
+        setLoaderDelay(false);
+      }
+    },1500)
   };
 
   const handlePrevious = () => {
@@ -488,7 +493,7 @@ const Onboarding = () => {
                   Verifying...
                 </>
               ) : (
-                "Start Verification"
+                "Finish"
               )}
             </Button>
           </div>
@@ -549,31 +554,40 @@ const Onboarding = () => {
             ))}
           </div>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>{steps[currentStep].title}</CardTitle>
-            <CardDescription>{steps[currentStep].description}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {renderStepContent()}
-            <div className="flex justify-between pt-6">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentStep === 0}
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous
-              </Button>
-              {currentStep < steps.length - 1 ? (
-                <Button onClick={handleNext} disabled={(!isStepValid() || !isCamAllowed)}>
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
+            <Card>
+        {loaderDelay ?
+          <Loader2 className="h-24 w-24 animate-spin text-green-500 mx-auto"/>
+          : (
+            <>
+            <CardHeader>
+              <CardTitle>{steps[currentStep].title}</CardTitle>
+              <CardDescription>{steps[currentStep].description}</CardDescription>
+            </CardHeader>
+          
+            <CardContent className="space-y-6">
+              {renderStepContent()}
+            </CardContent>
+            </>
+                )}
+             <CardContent className="space-y-6">
+              <div className="flex justify-between pt-6">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentStep === 0}
+                  >
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                  Previous
                 </Button>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
+                {currentStep < steps.length - 1 ? (
+                  <Button onClick={handleNext} disabled={(!isStepValid() || !isCamAllowed)}>
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
         {showWebcam && (
           <div className="fixed bottom-4 left-4">
 
