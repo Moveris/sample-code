@@ -38,6 +38,18 @@ type Step = {
   description: string;
 };
 
+interface ResultObj {
+  result: string;
+  ai_probability: number;
+  ai_detection_level: number;
+  human_likelihood_level: number;
+  confidence: number;
+  prediction: "Real" | "AI" | string;
+  processing_time_seconds: number;
+  ai_attention_level: number;
+  ai_emotion_level: number;
+}
+
 const steps: Step[] = [
   { id: 1, title: "Crypto Knowledge", description: "What's your experience level?" },
   { id: 2, title: "Trading Style", description: "How do you prefer to trade?" },
@@ -72,7 +84,7 @@ const Onboarding = () => {
   const [camBlockedUserStatusMessage, setCamBlockedUserStatusMessage] = useState<string>("");
   const [processCompleted, setProcessComplted] = useState<boolean>(false);
   const [webSocketError, setWebSocketError] = useState<boolean>(false);
-  const [resultObj, setResultObj] = useState<unknown>(null);
+  const [resultObj, setResultObj] = useState<ResultObj|null>(null);
   const [loaderDelay, setLoaderDelay] = useState<boolean>(false);
 
   // ============================================================================
@@ -316,7 +328,7 @@ const Onboarding = () => {
     setIsVerifying(true);
     isVerifyingRef.current=true;
     if (processCompleted && resultObj) {
-      if ("Real" === resultObj) {
+      if (resultObj?.prediction &&"Real" === resultObj?.prediction) {
         setIsVerified(true);
         navigate("/payment");
 
