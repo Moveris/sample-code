@@ -5,8 +5,8 @@
 const CONFIG = {
     WS_URL: 'wss://developers.moveris.com/ws/live/v1/',
     AUTH_TOKEN: 'Bearer <TOKEN>', // Replace with your actual token
-    FRAME_RATE: 200, // Send a frame every 200ms (5 frames per second)
-    MIN_FRAMES_FOR_PROCESSING: 500 // Minimum frames before expecting results
+    FRAME_RATE: 100, // Send a frame every 200ms (5 frames per second)
+    MIN_FRAMES_FOR_PROCESSING: 250 // Minimum frames before expecting results
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -214,6 +214,12 @@ function handleServerMessage(message) {
             // AI analysis complete - display results
             // Why: This contains the human detection analysis we requested
             displayResults(message.result);
+            break;
+        
+        case 'processing_error':
+            // AI analysis complete - display results
+            // Why: This contains the human detection analysis we requested
+            updateStatus(`Error: ${message.error}`, 'error');
             break;
             
         case 'error':

@@ -520,6 +520,12 @@
                         }, 3000);
                         break;
                     
+                    case 'processing_error':
+                        console.log('Processing error:', data);
+                        this.updateResults(data);
+                        break;
+                    
+                    
                     case 'error':
                         console.error('❌ Server error:', data.message);
                         this.log(`❌ Error: ${data.message}`);
@@ -572,6 +578,19 @@
 
             updateResults(result) {
                 const tbody = document.getElementById("resultBody");
+
+                if(result.error){
+                    tbody.innerHTML = `
+                        <tr><td style="font-weight:600">Prediction</td>              <td style="color: red; font-weight: bold;">${result.error}</td></tr>
+                        <tr><td style="font-weight:600">AI Probability</td>          <td>-</td></tr>
+                        <tr><td style="font-weight:600">Confidence</td>              <td>-</td></tr>
+                        <tr><td style="font-weight:600">Processing Time</td>         <td>-</td></tr>
+                        <tr><td style="font-weight:600">Attention</td>               <td>-</td></tr>
+                        <tr><td style="font-weight:600">Emotion</td>                 <td>-</td></tr>
+                        <tr><td style="font-weight:600" class="meta">Received At</td><td>${new Date().toLocaleString()}</td></tr>
+                    `;
+                    return;
+                }
                 
                 if (result.prediction === 'Error' || result.processing_error) {
                     tbody.innerHTML = `

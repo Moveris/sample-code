@@ -281,6 +281,19 @@ const Onboarding = () => {
             setWebSocketError(false);
           }
 
+          if ("processing_error" === data.type) {
+            setProcessComplted(false);
+            setWebSocketError(true);
+            clearInterval(intervalIdRef.current);
+            stopCamera();  
+            navigate("/error");
+            toast({
+              title: "Verification Failed",
+              description: data.error || "Please try again or contact support",
+              variant: "destructive",
+            });
+          }
+
           if ("error" === data.type) {
             console.log('Server errorr disconnecting!:', data);
             setProcessComplted(false);
