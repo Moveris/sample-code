@@ -6,20 +6,13 @@ import base64
 import time
 import cv2
 import websockets
-from datetime import datetime
 from typing import Optional
-import logging
+from logging_config import get_logger
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
-logger = logging.getLogger(__name__)
+logger = get_logger(level=None, name="moveris_client", log_to_file=False)
 
 
 class MoverisClient:

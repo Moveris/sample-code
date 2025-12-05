@@ -1,5 +1,4 @@
 node_modules
 .github
-live/python/logging_config.py
 .env
 .gitignore
