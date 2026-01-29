@@ -12,7 +12,7 @@ import { CheckCircle, XCircle, User, Shield, Eye, EyeOff } from 'lucide-react';
  * V2 SDK Benefits:
  * - Built-in face detection with oval guide
  * - Smart frame capture with quality checks
- * - Simplified API (no manual WebSocket handling)
+ * - Simplified API with built-in components
  * - Real-time feedback to users
  *
  * Configuration:

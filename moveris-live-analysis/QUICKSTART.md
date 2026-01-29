@@ -121,13 +121,13 @@ function App() {
 
 ## Next Steps
 
-- Read [README.md](../README.md) for comprehensive documentation
+- Read [README.md](./README.md) for comprehensive documentation
 - Try different models to compare accuracy/speed
 - Review the V2 SDK component props
-- Explore custom styling options
+- Explore [developers.moveris.com](https://developers.moveris.com) for more info
 
 ---
 
 **Estimated Total Time**: 5 minutes
 
-For detailed documentation, see [README.md](../README.md)
+For detailed documentation, see [README.md](./README.md)

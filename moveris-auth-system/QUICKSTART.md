@@ -91,18 +91,15 @@ Step 4: Success/Failure
 └─ Failure: Shows error with retry option
 ```
 
-## V2 SDK Advantages
+## V2 SDK Features
 
 The V2 SDK handles all the complexity for you:
 
-| V1 (WebSocket) | V2 (SDK) |
-|----------------|----------|
-| Manual WebSocket connection | Automatic |
-| Manual frame capture | Built-in |
-| No face detection | Real-time face detection |
-| No quality checks | Automatic quality checks |
-| 500+ frames needed | 10-250 frames (configurable) |
-| ~50 seconds | ~5 seconds (50-frame model) |
+- **Automatic API communication** - No manual connection handling
+- **Built-in frame capture** - Smart capture with quality checks
+- **Real-time face detection** - Oval guide with positioning feedback
+- **Configurable models** - Choose 10, 50, or 250 frames
+- **TypeScript support** - Full type definitions included
 
 ## Model Options
 
@@ -169,10 +166,9 @@ VITE_MOVERIS_MODEL=250  # Thorough: ~25 seconds, highest accuracy
 
 ## Next Steps
 
-- Read [README.md](../README.md) for comprehensive documentation
-- Review [DEPLOYMENT.md](./DEPLOYMENT.md) for production deployment
+- Read [README.md](./README.md) for comprehensive documentation
 - Check component code comments for detailed explanations
-- Explore Moveris SDK documentation for advanced features
+- Explore Moveris SDK documentation at [developers.moveris.com](https://developers.moveris.com)
 
 ## Success Checklist
 
