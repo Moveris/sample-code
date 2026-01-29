@@ -2,15 +2,15 @@
 
 A React + TypeScript application demonstrating integration with the **Moveris V2 SDK** (`@moveris/react`) for human liveness detection during user onboarding.
 
-## What's New in V2 SDK
+## V2 SDK Features
 
-The V2 SDK provides a significantly simpler integration experience:
+The V2 SDK provides a simple integration experience:
 
-- **No WebSocket handling** - The SDK manages all API communication internally
 - **Built-in face detection** - Real-time face detection with oval guide
 - **Smart frame capture** - Automatic quality checks and frame selection
 - **React components** - Ready-to-use `LivenessView`, `LivenessModal`, and more
 - **TypeScript support** - Full type definitions included
+- **Automatic API communication** - The SDK handles everything internally
 
 ## Quick Start
 
@@ -163,30 +163,6 @@ src/
 - **Tailwind CSS** - Styling
 - **React Router** - Navigation
 
-## Migration from V1
-
-If you're migrating from the WebSocket-based V1 implementation:
-
-### Before (V1 - WebSocket)
-
-```javascript
-// Manual WebSocket handling
-const ws = new WebSocket(CONFIG.MOVERIS_WS_URI);
-ws.onopen = () => {
-  ws.send(JSON.stringify({ type: 'auth', token: SECRET_KEY }));
-};
-// ... complex frame capture and message handling
-```
-
-### After (V2 - SDK)
-
-```tsx
-// Simple SDK integration
-<MoverisProvider apiKey={API_KEY}>
-  <LivenessView onResult={handleResult} />
-</MoverisProvider>
-```
-
 ## Scripts
 
 ```bash
@@ -199,8 +175,8 @@ npm run lint     # Run ESLint
 ## Resources
 
 - [Moveris Developer Portal](https://developers.moveris.com)
-- [@moveris/react Documentation](../../docs/api-reference.md#react-package)
-- [@moveris/shared Documentation](../../docs/api-reference.md#shared-package)
+- [@moveris/react](https://www.npmjs.com/package/@moveris/react) - React components and hooks
+- [@moveris/shared](https://www.npmjs.com/package/@moveris/shared) - Core utilities and types
 
 ## License
 

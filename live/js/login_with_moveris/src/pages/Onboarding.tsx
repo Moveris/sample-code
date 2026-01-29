@@ -30,7 +30,7 @@ import {
 // CONFIGURATION - Loaded from environment variables
 // ============================================================================
 const CONFIG = {
-  // Moveris API Configuration (V2 SDK uses REST API, not WebSocket)
+  // Moveris API Configuration (V2 SDK)
   MOVERIS_API_KEY: import.meta.env.VITE_MOVERIS_API_KEY || "",
   MOVERIS_BASE_URL: import.meta.env.VITE_MOVERIS_BASE_URL || undefined,
 
