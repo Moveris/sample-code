@@ -1,8 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "login_with_moveris",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "React app demonstrating Moveris Live V2 SDK integration for user verification",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,6 +12,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@moveris/react": "^1.0.0",
+    "@moveris/shared": "^1.0.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",

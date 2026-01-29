@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -18,18 +18,27 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // ============================================================================
+// MOVERIS V2 SDK IMPORTS
+// ============================================================================
+import { 
+  MoverisProvider, 
+  LivenessView,
+  type LivenessResultType 
+} from "@moveris/react";
+
+// ============================================================================
 // CONFIGURATION - Loaded from environment variables
 // ============================================================================
 const CONFIG = {
-  // Moveris API Configuration
-  MOVERIS_WS_URI: import.meta.env.VITE_MOVERIS_WS_URI || "wss://api.moveris.com/live/v1/",
-  MOVERIS_SECRET_KEY: import.meta.env.VITE_MOVERIS_SECRET_KEY || "",
+  // Moveris API Configuration (V2 SDK uses REST API, not WebSocket)
+  MOVERIS_API_KEY: import.meta.env.VITE_MOVERIS_API_KEY || "",
+  MOVERIS_BASE_URL: import.meta.env.VITE_MOVERIS_BASE_URL || undefined,
 
-  // Frame Capture Settings
-  FRAME_RATE: parseInt(import.meta.env.VITE_FRAME_RATE) || 10,
-  IMAGE_QUALITY: parseFloat(import.meta.env.VITE_IMAGE_QUALITY) || 0.7,
-  MAX_REQUIRED_FRAMES: parseInt(import.meta.env.VITE_REQUIRED_FRAMES) || 500,
+  // Model configuration: '10', '50', or '250' frames
+  MOVERIS_MODEL: (import.meta.env.VITE_MOVERIS_MODEL as '10' | '50' | '250') || '10',
 
+  // Enable debug mode for development
+  MOVERIS_DEBUG: import.meta.env.VITE_MOVERIS_DEBUG === 'true',
 };
 
 type Step = {
@@ -38,18 +47,6 @@ type Step = {
   description: string;
 };
 
-interface ResultObj {
-  result: string;
-  ai_probability: number;
-  ai_detection_level: number;
-  human_likelihood_level: number;
-  confidence: number;
-  prediction: "Real" | "AI" | string;
-  processing_time_seconds: number;
-  ai_attention_level: number;
-  ai_emotion_level: number;
-}
-
 const steps: Step[] = [
   { id: 1, title: "Crypto Knowledge", description: "What's your experience level?" },
   { id: 2, title: "Trading Style", description: "How do you prefer to trade?" },
@@ -57,7 +54,7 @@ const steps: Step[] = [
   { id: 4, title: "Primary Objective", description: "What's your main goal?" },
   { id: 5, title: "Trading Frequency", description: "How often will you trade?" },
   { id: 6, title: "Investment Amount", description: "How much will you invest?" },
-  { id: 7, title: "Finish Verification", description: "Click the finish button to complete the process." },
+  { id: 7, title: "Identity Verification", description: "Complete liveness verification to proceed." },
 ];
 
 const Onboarding = () => {
@@ -71,46 +68,25 @@ const Onboarding = () => {
     primaryObjective: "",
     tradingFrequency: "",
     investmentAmount: "",
-    document: null as File | null,
   });
   const [isVerified, setIsVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [showWebcam, setShowWebcam] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [error, setError] = useState<string>("");
-  const [camAllowPopup, setCamAllowPopup] = useState<boolean>(true);
-  const [isCamAllowed, setIsCamAllowed] = useState<boolean>(false);
-  const [camCancelPopup, setCamCancelPopup] = useState<boolean>(false);
-  const [camBlockedUserStatusMessage, setCamBlockedUserStatusMessage] = useState<string>("");
-  const [processCompleted, setProcessComplted] = useState<boolean>(false);
-  const [webSocketError, setWebSocketError] = useState<boolean>(false);
-  const [resultObj, setResultObj] = useState<ResultObj|null>(null);
-  const [loaderDelay, setLoaderDelay] = useState<boolean>(false);
-
-  // ============================================================================
-  // REFS
-  // ============================================================================
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const frameCountRef = useRef<number>(0);
-  const websocketRef = useRef<WebSocket | null>(null);
-  const intervalIdRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isVerifyingRef = useRef<boolean>(false);
-
-
-  useEffect(() => {
-    // Request webcam access after component mounts
-    setShowWebcam(true);
-  }, []);
+  const [loaderDelay, setLoaderDelay] = useState(false);
+  const [showCameraDialog, setShowCameraDialog] = useState(false);
+  const [verificationStarted, setVerificationStarted] = useState(false);
 
   const handleNext = () => {
     setLoaderDelay(true);
-    setTimeout(()=>{
+    setTimeout(() => {
       if (currentStep < steps.length - 1) {
         setCurrentStep(currentStep + 1);
         setLoaderDelay(false);
+
+        // Show camera permission dialog when reaching verification step
+        if (currentStep === 5) {
+          setShowCameraDialog(true);
+        }
       }
-    },1500)
+    }, 1500);
   };
 
   const handlePrevious = () => {
@@ -120,240 +96,56 @@ const Onboarding = () => {
   };
 
   // ============================================================================
-  // Web Cam initialization 
-  // =============================================================================
-  const startCamera = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 },
-        audio: false,
+  // MOVERIS V2 SDK CALLBACKS
+  // ============================================================================
+
+  /**
+   * Handle successful liveness verification result
+   */
+  const handleLivenessResult = useCallback((result: LivenessResultType) => {
+    console.log('Liveness result:', result);
+
+    if (result.verdict === 'live') {
+      setIsVerified(true);
+      toast({
+        title: "Verification Successful",
+        description: `Confidence: ${(result.confidence * 100).toFixed(1)}%`,
       });
-      setStream(mediaStream);
-      setIsCamAllowed(true);
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err) {
-      if (!(err instanceof Error)) {
-        err = new Error(err);
-      }
-      if ("NotAllowedError" === err.name) {
-        const status = await navigator.permissions.query({ name: "camera" });
-
-        if ("prompt" === status.state) {
-          setCamBlockedUserStatusMessage("This app needs access to your camera. Please refresh your Browser or  allow camera accessto continue.Go to Settings>Privacy & Security> Permissions or Site settings to enable camera access.");
-        }
-        if ("denied" === status.state) {
-          setCamBlockedUserStatusMessage("Camera access has been denied. Please enable camera permissions manually in your browser or device settings to continue. Go to Settings>Privacy & Security> Permissions or Site settings to enable camera access.");
-        }
-      }
-      setIsCamAllowed(false);
-      setCamCancelPopup(true);
-
-      console.error("Error accessing camera:", err);
-      setError("Unable to access camera. Please grant camera permissions.");
-
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      for (const track of stream.getTracks()) {
-        track.stop()
-      }
-      setStream(null);
-    }
-  };
-
-  // ============================================================================
-  // MOVERIS WEBSOCKET INTEGRATION (Based on provided HTML logic)
-  // ============================================================================
-  /**
-   * Captures a frame from the video stream
-   * Converts to base64 JPEG format for transmission
-  **/
-  const captureFrame = (): string => {
-    if (!videoRef.current || !canvasRef.current) return null;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    // Draw current video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    // Convert to base64 JPEG
-    const dataUrl = canvas.toDataURL('image/jpeg', CONFIG.IMAGE_QUALITY);
-    const base64Data = dataUrl.split(',')[1];
-
-    return base64Data;
-  };
-
-  useEffect(() => {
-    if (!captureFrame) return; // Wait until captureFrame is ready
-
-    if (isCamAllowed && videoRef.current && canvasRef.current) {
-
-      initializeWebSocket();
-    }
-    // // Cleanup function for socket and timers
-    return () => {
-
-      if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-        websocketRef.current.close();
-        console.log("WebSocket closed");
-      }
-    };
-
-
-  }, [videoRef.current, canvasRef.current, isCamAllowed]);
-
-  // To fix issue  4 levels of problem 
-  const sendFrame = () => {
-    if (websocketRef.current?.readyState !== WebSocket.OPEN) return;
-
-    const frameData = captureFrame();
-    frameCountRef.current += 1;
-    const currentFrame = frameCountRef.current;
-
-    websocketRef.current?.send(JSON.stringify({
-      type: 'frame',
-      frame_number: currentFrame,
-      frame_data: frameData,
-      timestamp: Date.now() / 1000,
-    }));
-
-    // Disconnect when max frames reached
-    // if (currentFrame >= CONFIG.MAX_REQUIRED_FRAMES) {
-    //   clearInterval(intervalIdRef.current);    
-    //   console.log("Max frames reached, WebSocket disconnected.");
-    // }
-  };
-
-  /**
-   * Initializes WebSocket connection to Moveris API
-   * Handles authentication and frame streaming    
-  **/
-  const initializeWebSocket = async () => {
-    try {
-      websocketRef.current = new WebSocket(CONFIG.MOVERIS_WS_URI);
-
-      websocketRef.current.onopen = () => {
-        console.log('WebSocket connected');
-        websocketRef.current.send(JSON.stringify({
-          type: 'auth',
-          token: CONFIG.MOVERIS_SECRET_KEY
-        }));
-      };
-
-      websocketRef.current.onmessage = (event: MessageEvent): void => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if ("auth_success" === data.type) {
-            console.log('Sending frames started');
-            intervalIdRef.current = setInterval(sendFrame, 1000 / CONFIG.FRAME_RATE);
-          }
-
-          if ("processing_started" === data.type) {
-            console.log('Process started');
-            clearInterval(intervalIdRef.current);
-          }
-
-          if ("processing_complete" === data.type) {            
-            if (isVerifyingRef.current && data?.result) {
-              if ("Real" === data?.result?.prediction) {
-                setIsVerified(true);
-                navigate("/payment");
-              } else {
-                navigate("/error");
-              }
-            }
-            console.log("process", data);
-            setResultObj(data.result)
-            console.log('Process completed');
-            clearInterval(intervalIdRef.current);
-            stopCamera();
-            setProcessComplted(true);
-            setIsVerifying(false);
-            setWebSocketError(false);
-          }
-
-          if ("processing_error" === data.type) {
-            setProcessComplted(false);
-            setWebSocketError(true);
-            clearInterval(intervalIdRef.current);
-            stopCamera();  
-            navigate("/error");
-            toast({
-              title: "Verification Failed",
-              description: data.error || "Please try again or contact support",
-              variant: "destructive",
-            });
-          }
-
-          if ("error" === data.type) {
-            console.log('Server errorr disconnecting!:', data);
-            setProcessComplted(false);
-            setWebSocketError(true);
-            clearInterval(intervalIdRef.current);
-            stopCamera();
-
-          }
-
-          if ("disconnect" === data.type) {
-            setProcessComplted(false);
-            setWebSocketError(true);
-            clearInterval(intervalIdRef.current);
-            stopCamera();
-          }
-        } catch (error) {
-          setIsVerifying(false);
-          setWebSocketError(true);
-          console.error("WebSocket error occurred (onmessage):", error);
-          toast({
-            title: "Verification Failed",
-            description: "Please try again or contact support",
-            variant: "destructive",
-          });
-        }
-      };
-
-      websocketRef.current.onerror = (err: Event): void => {
-        setWebSocketError(true);
-        setIsVerifying(false);
-        clearInterval(intervalIdRef.current);
-        console.error("WebSocket error occurred (onerror):", err);
-
-      };
-    } catch (error) {
-      setWebSocketError(true);
-      setIsVerifying(false);
-      console.error("WebSocket initialization error:", error);
-      clearInterval(intervalIdRef.current);
-    }
-  };
-
-
-  const startVeriFicationClick = () => {
-    setIsVerifying(true);
-    isVerifyingRef.current=true;
-    if (processCompleted && resultObj) {
-      if (resultObj?.prediction &&"Real" === resultObj?.prediction) {
-        setIsVerified(true);
+      // Navigate to success page after brief delay
+      setTimeout(() => {
         navigate("/payment");
-
-      } else {
-        navigate("/error");
-      }
-    }
-    if (webSocketError) {
+      }, 1500);
+    } else {
+      toast({
+        title: "Verification Failed",
+        description: "Liveness check did not pass. Please try again.",
+        variant: "destructive",
+      });
       navigate("/error");
     }
-    
-  }
+  }, [navigate, toast]);
+
+  /**
+   * Handle liveness verification errors
+   */
+  const handleLivenessError = useCallback((error: Error) => {
+    console.error('Liveness error:', error);
+    toast({
+      title: "Verification Error",
+      description: error.message || "An error occurred during verification",
+      variant: "destructive",
+    });
+    navigate("/error");
+  }, [navigate, toast]);
+
+  /**
+   * Start the verification process
+   */
+  const startVerification = () => {
+    setShowCameraDialog(false);
+    setVerificationStarted(true);
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -509,18 +301,56 @@ const Onboarding = () => {
           </div>
         );
       case 6:
+        // Verification step with Moveris V2 SDK LivenessView
         return (
           <div className="space-y-6">
-            <Button onClick={startVeriFicationClick} disabled={isVerifying} className="w-full">
-              {isVerifying ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                "Finish"
-              )}
-            </Button>
+            {!verificationStarted ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">
+                  Click the button below to start identity verification
+                </p>
+                <Button onClick={() => setShowCameraDialog(true)} className="w-full">
+                  Start Verification
+                </Button>
+              </div>
+            ) : (
+              <MoverisProvider
+                apiKey={CONFIG.MOVERIS_API_KEY}
+                model={CONFIG.MOVERIS_MODEL}
+                baseUrl={CONFIG.MOVERIS_BASE_URL}
+                debug={CONFIG.MOVERIS_DEBUG}
+              >
+                <div className="relative">
+                  <LivenessView
+                    model={CONFIG.MOVERIS_MODEL}
+                    onResult={handleLivenessResult}
+                    onError={handleLivenessError}
+                    showOverlay={true}
+                    showControls={true}
+                    showResult={true}
+                    autoStartCamera={true}
+                    className="rounded-lg overflow-hidden"
+                    statusMessages={{
+                      idle: "Position your face in the oval",
+                      capturing: "Hold still, capturing...",
+                      uploading: "Uploading frames...",
+                      processing: "Analyzing...",
+                      complete: "Verification complete!",
+                      error: "An error occurred",
+                    }}
+                  />
+
+                  {isVerified && (
+                    <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center rounded-lg backdrop-blur-sm">
+                      <div className="text-center">
+                        <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-2" />
+                        <p className="text-green-700 font-semibold">Verified Successfully!</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </MoverisProvider>
+            )}
           </div>
         );
       default:
@@ -536,7 +366,7 @@ const Onboarding = () => {
       case 3: return formData.primaryObjective !== "";
       case 4: return formData.tradingFrequency !== "";
       case 5: return formData.investmentAmount !== "";
-      case 6: return formData.document !== null;
+      case 6: return isVerified;
       default: return true;
     }
   };
@@ -550,15 +380,18 @@ const Onboarding = () => {
           </div>
           <span className="text-2xl font-bold">Traiders</span>
         </div>
+
+        {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             {steps.map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div
-                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${index <= currentStep
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                    }`}
+                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    index <= currentStep
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
                 >
                   {index + 1}
                 </div>
@@ -567,10 +400,8 @@ const Onboarding = () => {
                     <div
                       className={`h-1 w-16 ${index < currentStep ? "bg-primary" : "bg-muted"}`}
                     />
-
-                    {/* Arrow */}
                     <div
-                      className={`w-3 h-3 border-t-8 border-b-8 ml-[1px]  border-white
+                      className={`w-3 h-3 border-t-8 border-b-8 ml-[1px] border-white
                       ${index < currentStep ? "border-l-8 border-l-primary" : "border-l-8 border-l-muted"}`}
                     />
                   </div>
@@ -579,91 +410,51 @@ const Onboarding = () => {
             ))}
           </div>
         </div>
-            <Card>
-            <CardHeader>
-              <CardTitle>{steps[currentStep].title}</CardTitle>
-              <CardDescription>{steps[currentStep].description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {renderStepContent()}
-            </CardContent>
-             <CardContent className="space-y-6">
-              <div className="flex justify-between pt-6">
-                <Button
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentStep === 0}
-                  >
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous
-                </Button>
-                {currentStep < steps.length - 1 ? (
-                  <Button onClick={handleNext} disabled={(!isStepValid() || !isCamAllowed)}>
-                    {loaderDelay ? <Loader2 className="h-4 w-4 animate-spin text-white mx-auto"/> : ''}
-                    Next
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-        {showWebcam && (
-          <div className="fixed bottom-4 left-4">
 
-            <Card className={`p-2 w-48 transition-opacity duration-5000 ${isVerified && !stream ? 'opacity-0' : 'opacity-100'}`}>
-              <div className="relative">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-32 object-cover rounded-md"
-                />
-                <canvas ref={canvasRef} className="hidden" />
-                {isVerified && (
-                  <div className="absolute inset-0 bg-success/20 flex items-center justify-center rounded-md backdrop-blur-sm">
-                    <CheckCircle2 className="h-12 w-12 text-success drop-shadow-lg" />
-                  </div>
-                )}
-                {error && (
-                  <div className="text-xs text-destructive mt-1">{error}</div>
-                )}
-              </div>
-              <p className="text-xs text-center text-muted-foreground mt-2">
-                {isVerified ? "Verified ✓" : "Live Camera Feed"}
-              </p>
-            </Card>
-          </div>
-        )}
-        {/* Popups  */}
-        {/* camera required popup  */}
-        <AlertDialog open={camAllowPopup} onOpenChange={setCamAllowPopup}>
+        {/* Step Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{steps[currentStep].title}</CardTitle>
+            <CardDescription>{steps[currentStep].description}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {renderStepContent()}
+          </CardContent>
+          <CardContent className="space-y-6">
+            <div className="flex justify-between pt-6">
+              <Button
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={currentStep === 0}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Previous
+              </Button>
+              {currentStep < steps.length - 1 ? (
+                <Button onClick={handleNext} disabled={!isStepValid()}>
+                  {loaderDelay && <Loader2 className="h-4 w-4 animate-spin text-white mx-auto" />}
+                  Next
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Camera Permission Dialog */}
+        <AlertDialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Camera Access Required</AlertDialogTitle>
             </AlertDialogHeader>
             <AlertDialogDescription>
-              Hey! Traiders needs to turn on your webcam just for a quick human check.
-              It’ll only take a moment, and your camera feed stays private.
+              Traiders needs to access your webcam for identity verification.
+              This helps ensure the security of your account. Your camera feed
+              is processed securely and is not stored.
             </AlertDialogDescription>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setCamCancelPopup(true)}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={startCamera}>Allow Camera</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        {/* camera blocked popup  */}
-        <AlertDialog open={camCancelPopup} onOpenChange={setCamCancelPopup}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Camera Access Required*</AlertDialogTitle>
-            </AlertDialogHeader>
-            <AlertDialogDescription>
-              {camBlockedUserStatusMessage !== "" ? camBlockedUserStatusMessage : "This Identity verification service available only with Camera access"}
-            </AlertDialogDescription>
-            <AlertDialogFooter>
-              {camBlockedUserStatusMessage === "" &&
-                <AlertDialogAction onClick={startCamera}>Allow Camera</AlertDialogAction>}
+              <AlertDialogCancel onClick={() => navigate("/")}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={startVerification}>Allow Camera</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

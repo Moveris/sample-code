@@ -1,16 +1,16 @@
-# Quick Start Guide
+# Quick Start Guide - V2 SDK
 
-Get the Moveris Liveliness Authentication system running in 5 minutes.
+Get the Moveris Liveliness Authentication system running in 5 minutes using the **V2 SDK**.
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Node.js 16+ installed
-- Moveris developer account with secret key
+- Moveris developer account with API key
 - Webcam-enabled device
 
-## 🚀 Setup Steps
+## Setup Steps
 
-### 1. Install Dependencies (1 minute)
+### 1. Install Dependencies
 
 ```bash
 npm install
@@ -18,54 +18,33 @@ npm install
 
 This installs:
 - React & React DOM
+- **@moveris/react** - V2 React SDK
+- **@moveris/shared** - V2 Shared utilities
 - lucide-react (UI icons)
 - Tailwind CSS (styling)
 - Vite (build tool)
 
-### 2. Get Moveris API Credentials (2 minutes)
+### 2. Get Moveris API Key
 
 1. Sign up at [Moveris Developer Portal](https://developers.moveris.com)
 2. Create a new application
-3. Copy your:
-   - WebSocket URI: `wss://developers.moveris.com/ws/live/v1/`
-   - Secret Key: `your_secret_key_here`
+3. Copy your **API Key** (format: `mv_xxxxxxxx`)
 
-### 3. Configure Application (1 minute)
-
-**Option A: Using Environment Variables (Recommended)**
+### 3. Configure Application
 
 1. Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
 
-2. Edit `.env` and update with your credentials:
+2. Edit `.env` and add your API key:
 ```env
-VITE_MOVERIS_WS_URI=wss://developers.moveris.com/ws/live/v1/
-VITE_MOVERIS_SECRET_KEY=paste_your_secret_key_here
-VITE_FRAME_RATE=10
-VITE_IMAGE_QUALITY=0.7
-VITE_REQUIRED_FRAMES=500
+VITE_MOVERIS_API_KEY=mv_your_api_key_here
+VITE_MOVERIS_MODEL=50
+VITE_MOVERIS_DEBUG=false
 VITE_ADMIN_EMAIL=admin@example.com
 VITE_ADMIN_PASSWORD=Admin@123
 ```
-
-**Option B: Direct Code Configuration**
-
-Open `src/App.jsx` and update the CONFIG object (lines 22-30):
-```javascript
-const CONFIG = {
-  MOVERIS_WS_URI: "wss://developers.moveris.com/ws/live/v1/",
-  MOVERIS_SECRET_KEY: "paste_your_secret_key_here",
-  FRAME_RATE: 10,
-  IMAGE_QUALITY: 0.7,
-  REQUIRED_FRAMES: 500,
-  ADMIN_EMAIL: "admin@example.com",
-  ADMIN_PASSWORD: "Admin@123",
-};
-```
-
-**Note:** Environment variables (Option A) are recommended as they keep credentials out of your code.
 
 ### 4. Run Development Server
 
@@ -75,223 +54,141 @@ npm run dev
 
 Open browser to `http://localhost:5173`
 
-## ✅ Testing the Flow
+## Testing the Flow
 
 1. **Enter login credentials**
    - Email: admin@example.com
    - Password: Admin@123
 2. **Click "Sign In"** button
 3. **Allow webcam access** when prompted
-4. **Look at the camera** while 500 frames are captured
-5. **Wait for processing** (takes about 50 seconds at 10 FPS)
-6. **Success!** You should see verification results
+4. **Position your face** in the oval guide
+5. **Hold still** while frames are captured
+6. **Wait for processing** (a few seconds)
+7. **Success!** You should see verification results
 
-## 🎯 What Should Happen
+## What Should Happen
 
 ```
 Step 1: Login Screen
 ├─ Shows email/password form
 ├─ Enter: admin@example.com / Admin@123
-└─ Info about 2FA liveliness check
+└─ Info about 2FA liveness check
 
 Step 2: Email/Password Authentication
 ├─ Validates credentials
-└─ Proceeds to webcam stage
+└─ Proceeds to liveness stage
 
-Step 3: Liveliness Check
+Step 3: Liveness Check (V2 SDK)
 ├─ Requests webcam access
-├─ Connects to Moveris WebSocket
-├─ Sends secret key for authentication
-├─ Captures video frames at 10 FPS
-├─ Sends 500 frames to Moveris API
-├─ Shows real-time stats (frames sent, ack'd, time)
-└─ Receives liveliness result
+├─ Shows face detection oval guide
+├─ Real-time feedback (position your face)
+├─ Captures frames when quality is good
+├─ Automatic API submission
+└─ Receives liveness result
 
 Step 4: Success/Failure
 ├─ Success: Shows detection results and user profile
 └─ Failure: Shows error with retry option
 ```
 
-## 🐛 Troubleshooting
+## V2 SDK Advantages
+
+The V2 SDK handles all the complexity for you:
+
+| V1 (WebSocket) | V2 (SDK) |
+|----------------|----------|
+| Manual WebSocket connection | Automatic |
+| Manual frame capture | Built-in |
+| No face detection | Real-time face detection |
+| No quality checks | Automatic quality checks |
+| 500+ frames needed | 10-250 frames (configurable) |
+| ~50 seconds | ~5 seconds (50-frame model) |
+
+## Model Options
+
+```env
+# Choose your model in .env
+VITE_MOVERIS_MODEL=10   # Fast: ~1 second, good accuracy
+VITE_MOVERIS_MODEL=50   # Balanced: ~5 seconds, 93.8% accuracy (default)
+VITE_MOVERIS_MODEL=250  # Thorough: ~25 seconds, highest accuracy
+```
+
+## Troubleshooting
 
 ### "Failed to access webcam"
-- **Cause**: Browser doesn't have camera permission
 - **Fix**: Click lock icon in address bar → Allow camera
 
 ### "Invalid email or password"
-- **Cause**: Incorrect credentials entered
-- **Fix**: Use admin@example.com / Admin@123 or update CONFIG in App.jsx
+- **Fix**: Use admin@example.com / Admin@123
 
-### "Connection error" or WebSocket fails
-- **Cause**: Incorrect Moveris secret key or network issue
-- **Fix**: Verify secret key is correct (no "Bearer" prefix needed)
+### "Invalid API key"
+- **Fix**: Check your `VITE_MOVERIS_API_KEY` in `.env`
+- Verify key is active at developers.moveris.com
 
 ### Black video screen
-- **Cause**: Camera in use by another app
 - **Fix**: Close other apps using camera (Zoom, Teams, etc.)
 
-### Nothing happens after login
-- **Cause**: WebSocket connection or authentication failed
-- **Fix**: Check browser console (F12) for error messages and verify secret key
+### Face detection not working
+- **Fix**: Ensure good lighting, face centered in frame
 
-### Frames not processing
-- **Cause**: Not enough frames sent or connection dropped
-- **Fix**: Wait for all 500 frames to be sent. Check "Frames Sent" counter
+## Understanding the V2 SDK Code
 
-## 📱 Testing on Mobile
+### Key Components
 
-1. Find your local IP address:
-   ```bash
-   # On Mac/Linux
-   ifconfig | grep inet
-   
-   # On Windows
-   ipconfig
-   ```
+```jsx
+// MoverisProvider - Wraps your app
+<MoverisProvider apiKey={API_KEY} model="50">
+  {/* Your components */}
+</MoverisProvider>
 
-2. Update Google OAuth authorized origins:
-   ```
-   http://YOUR_IP:5173
-   ```
-
-3. On mobile browser, navigate to:
-   ```
-   http://YOUR_IP:5173
-   ```
-
-## 🔧 Customization Quick Tips
-
-### Change Theme Colors
-Find and replace in `src/App.jsx`:
-- `indigo` → your color (e.g., `blue`, `green`, `purple`)
-
-### Adjust Detection Time
-In `CONFIG` object:
-```javascript
-LIVELINESS_DURATION: 3000,  // 3 seconds instead of 5
+// LivenessView - All-in-one component
+<LivenessView
+  model="50"
+  onResult={(result) => {
+    if (result.verdict === 'live') {
+      // User is verified!
+    }
+  }}
+  onError={(error) => console.error(error)}
+  showOverlay={true}
+  showControls={true}
+  autoStartCamera={true}
+/>
 ```
 
-### Change Frame Rate
-In `CONFIG` object:
-```javascript
-FRAME_CAPTURE_INTERVAL: 1000,  // 1 frame/second instead of 2 frames/second
-```
+### Result Object
 
-### Modify Video Quality
-In `initializeWebcam()` function, change:
 ```javascript
-video: { 
-  width: { ideal: 1280 },  // Higher resolution
-  height: { ideal: 720 },
-  facingMode: 'user'
+{
+  verdict: 'live',        // 'live' or 'fake'
+  confidence: 0.95,       // 0.0-1.0 confidence score
+  score: 95,              // 0-100 numeric score
+  sessionId: 'uuid-...'   // Unique session ID
 }
 ```
 
-## 📚 Next Steps
+## Next Steps
 
-- Read [README.md](./README.md) for comprehensive documentation
+- Read [README.md](../README.md) for comprehensive documentation
 - Review [DEPLOYMENT.md](./DEPLOYMENT.md) for production deployment
 - Check component code comments for detailed explanations
-- Explore Moveris API documentation for advanced features
+- Explore Moveris SDK documentation for advanced features
 
-## 💡 Common Modifications
+## Success Checklist
 
-### Add User Session Persistence
-
-```javascript
-// Save user after successful auth
-localStorage.setItem('user', JSON.stringify(googleUser));
-
-// Load user on app start
-useEffect(() => {
-  const savedUser = localStorage.getItem('user');
-  if (savedUser) {
-    setGoogleUser(JSON.parse(savedUser));
-    setAuthStage('success');
-  }
-}, []);
-```
-
-### Add Logout Functionality
-
-```javascript
-const handleLogout = () => {
-  localStorage.removeItem('user');
-  setGoogleUser(null);
-  setAuthStage('login');
-};
-```
-
-### Add Loading States
-
-```javascript
-const [isLoading, setIsLoading] = useState(false);
-
-// Show spinner during operations
-{isLoading && <Loader2 className="animate-spin" />}
-```
-
-## 🎓 Understanding the Code
-
-### Key Files
-- `src/App.jsx` - Main application logic
-- `src/main.jsx` - React entry point
-- `src/index.css` - Tailwind CSS imports
-- `index.html` - HTML template
-
-### Important Functions
-- `handleGoogleSuccess()` - Processes Google login
-- `initializeWebcam()` - Starts camera
-- `initializeWebSocket()` - Connects to Moveris
-- `captureFrame()` - Takes video snapshots
-- `startFrameCapture()` - Sends frames to API
-
-### State Variables
-- `authStage` - Current step (login/liveliness/success/error)
-- `googleUser` - User info from Google
-- `frameCount` - Number of frames sent
-- `detectionResult` - Moveris API response
-
-## 🆘 Getting Help
-
-### Check Logs
-Open browser console (F12) to see:
-- WebSocket connection status
-- Frame transmission logs
-- Error messages
-
-### Common Console Messages
-```
-✓ "Connected to Moveris WebSocket" - Good
-✓ "Sent authentication payload" - Good
-✓ "Sent frame: 1" - Good
-✗ "WebSocket error" - Check Moveris credentials
-✗ "Failed to access webcam" - Check permissions
-```
-
-### Still Stuck?
-1. Check all credentials are correct
-2. Verify webcam works in other apps
-3. Try different browser
-4. Check firewall/antivirus settings
-5. Review error messages in console
-
-## 🎉 Success Checklist
-
-- [x] Dependencies installed
-- [x] Google OAuth configured
-- [x] Moveris credentials added
+- [x] Dependencies installed (including @moveris/react)
+- [x] API key configured in .env
 - [x] Development server running
 - [x] Can see login page
-- [x] Google login works
+- [x] Login works with demo credentials
 - [x] Webcam activates
-- [x] Frames are being sent
-- [x] Liveliness detected successfully
+- [x] Face detection oval appears
+- [x] Liveness detected successfully
 
 **You're ready to build!** 🚀
 
 ---
 
-**Estimated Total Time**: 5-10 minutes
+**Estimated Total Time**: 5 minutes
 
-For detailed documentation, see [README.md](./README.md)
+For detailed documentation, see [README.md](../README.md)
