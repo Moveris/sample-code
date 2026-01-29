@@ -425,7 +425,6 @@ interface LivenessResult {
 - **Healthcare** - Telemedicine identity verification
 - **Government** - Digital identity, remote voting
 - **Education** - Online exam proctoring
-- **E-Commerce** - Age verification, fraud prevention
 - **Corporate** - Remote work authentication
 
 ---
