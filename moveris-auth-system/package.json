@@ -1,7 +1,7 @@
 {
   "name": "moveris-liveliness-auth",
   "version": "1.0.0",
-  "description": "React authentication system with Google OAuth and Moveris liveliness detection",
+  "description": "React authentication system with Moveris Live V2 SDK for liveness detection",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,8 @@
     "lint": "eslint src --ext js,jsx"
   },
   "dependencies": {
+    "@moveris/react": "^1.0.0",
+    "@moveris/shared": "^1.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "lucide-react": "^0.263.1"
